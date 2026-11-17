@@ -1,0 +1,17 @@
+{
+  "name": "zenlyft-manufacturing-business-os",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Order-to-Audit System for Small Food Manufacturer - NIT Tiruchirappalli & ZenLyft OS",
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build:server": "npm --prefix server run build",
+    "build:client": "npm --prefix client run build",
+    "build": "npm run build:server && npm run build:client",
+    "test:server": "npm --prefix server test",
+    "test": "npm run test:server",
+    "benchmark": "npm --prefix server run benchmark",
+    "seed": "npm --prefix server run seed"
+  }
+}
