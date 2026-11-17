@@ -10,7 +10,8 @@ import {
   Wifi, 
   WifiOff, 
   Play, 
-  RotateCcw 
+  RotateCcw,
+  MessageSquare
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -38,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { role: 'production', label: 'Production Floor', icon: Factory, desc: 'BOM, Batch Runs, Variance' },
     { role: 'accountant', label: 'Inventory & Ledger', icon: Boxes, desc: 'Stock Ledger & Summary' },
     { role: 'owner', label: 'Accounts & Reports', icon: FileSpreadsheet, desc: 'GST, Sales, Receivables' },
+    { role: 'whatsapp', label: 'WhatsApp Automation', icon: MessageSquare, desc: 'OpenWA Automation Centre' },
   ];
 
   return (

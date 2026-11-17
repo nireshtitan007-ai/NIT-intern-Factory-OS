@@ -95,6 +95,16 @@ export const api = {
 
   // Owner Overview
   getOwnerOverview: () => fetch(`${API_BASE}/owner/overview`).then(r => r.json()),
-  getAuditLogs: () => fetch(`${API_BASE}/audit-logs`).then(r => r.json())
+  getAuditLogs: () => fetch(`${API_BASE}/audit-logs`).then(r => r.json()),
+
+  // WhatsApp & OpenWA Automation
+  getWhatsAppNotifications: () => fetch(`${API_BASE}/whatsapp/notifications`).then(r => r.json()),
+  sendWhatsAppNotification: (data: any) => 
+    fetch(`${API_BASE}/whatsapp/send-test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  getWhatsAppStatus: () => fetch(`${API_BASE}/whatsapp/status`).then(r => r.json())
 };
 

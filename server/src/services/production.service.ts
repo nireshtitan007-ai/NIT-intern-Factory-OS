@@ -8,6 +8,7 @@ import {
   AuditLog 
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
+import { WhatsAppService } from './whatsapp.service';
 
 export interface ExecuteProductionRunParams {
   productId: string;
@@ -262,6 +263,13 @@ export class ProductionService {
         costPerPacket
       }
     });
+
+    // WhatsApp Production Variance Alert Trigger
+    try {
+      await WhatsAppService.onProductionVariance(productionRun);
+    } catch (e) {
+      console.warn('[WhatsApp] Failed to dispatch production alert:', e);
+    }
 
     return productionRun;
   }

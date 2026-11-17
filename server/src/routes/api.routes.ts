@@ -54,5 +54,10 @@ router.get('/reports/outstanding', ApiController.getOutstanding);
 router.get('/owner/overview', ApiController.getOwnerOverview);
 router.get('/audit-logs', ApiController.getAuditLogs);
 
+// WhatsApp & OpenWA Automation
+router.get('/whatsapp/notifications', ApiController.getWhatsAppNotifications);
+router.post('/whatsapp/send-test', ApiController.sendTestWhatsApp);
+router.get('/whatsapp/status', ApiController.getWhatsAppStatus);
+
 export default router;
 

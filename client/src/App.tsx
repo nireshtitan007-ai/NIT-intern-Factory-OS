@@ -8,6 +8,7 @@ import { ProductionView } from './pages/ProductionView';
 import { InventoryView } from './pages/InventoryView';
 import { AuditorView } from './pages/AuditorView';
 import { OwnerView } from './pages/OwnerView';
+import { WhatsAppCenterView } from './pages/WhatsAppCenterView';
 import { api } from './services/api';
 
 export const App: React.FC = () => {
@@ -61,6 +62,7 @@ export const App: React.FC = () => {
         {currentRole === 'production' && <ProductionView />}
         {currentRole === 'accountant' && <InventoryView />}
         {currentRole === 'owner' && <AuditorView />}
+        {currentRole === 'whatsapp' && <WhatsAppCenterView />}
       </main>
 
       {/* Benchmark Results Modal */}

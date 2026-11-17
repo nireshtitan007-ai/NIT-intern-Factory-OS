@@ -18,6 +18,7 @@ import { PurchaseService } from '../services/purchase.service';
 import { ProductionService } from '../services/production.service';
 import { SalesOrderService } from '../services/salesOrder.service';
 import { ReportService } from '../services/report.service';
+import { WhatsAppService } from '../services/whatsapp.service';
 import { PDFInvoiceGenerator } from '../utils/pdfGenerator';
 import { CSVExportUtil } from '../utils/csvExport';
 import { seedBenchmarkData } from '../scripts/seedBenchmark';
@@ -377,6 +378,48 @@ export class ApiController {
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
+  }
+
+  // --- WhatsApp & OpenWA Automation ---
+  static async getWhatsAppNotifications(req: Request, res: Response) {
+    try {
+      const notifications = await WhatsAppService.getNotifications();
+      res.json({ success: true, notifications });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async sendTestWhatsApp(req: Request, res: Response) {
+    try {
+      const { recipientPhone, recipientName, templateType, variables } = req.body;
+      const notification = await WhatsAppService.sendNotification({
+        recipientPhone: recipientPhone || '9876543210',
+        recipientName: recipientName || 'Customer',
+        templateType: templateType || 'ORDER_CONFIRMATION',
+        variables: variables || {
+          customerName: 'Retailer A',
+          orderNumber: 'SO-2024-001',
+          productName: 'Murukku 200 g',
+          quantity: 150,
+          totalAmount: 7500
+        }
+      });
+      res.status(201).json({ success: true, notification });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getWhatsAppStatus(req: Request, res: Response) {
+    res.json({
+      success: true,
+      service: 'OpenWA Automation Engine',
+      adapter: 'OpenWA REST Service',
+      replaceable: 'Meta WhatsApp Cloud API compliant',
+      serverUrl: process.env.OPENWA_SERVER_URL || 'http://localhost:8080 (Simulated / Local)',
+      status: 'ONLINE'
+    });
   }
 }
 

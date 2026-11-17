@@ -11,6 +11,7 @@ import {
   AuditLog 
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
+import { WhatsAppService } from './whatsapp.service';
 
 export interface CreateOrderParams {
   customerId: string;
@@ -244,6 +245,14 @@ export class SalesOrderService {
       }
     });
 
+    // WhatsApp Notification Trigger via OpenWA
+    try {
+      await WhatsAppService.onOrderApproved(order, customer);
+      await WhatsAppService.onInvoiceRaised(invoice);
+    } catch (e) {
+      console.warn('[WhatsApp] Failed to dispatch order/invoice notification:', e);
+    }
+
     return { order, invoice };
   }
 
@@ -303,6 +312,13 @@ export class SalesOrderService {
         itemsCount: invoice.items.length
       }
     });
+
+    // WhatsApp Dispatch Notification Trigger
+    try {
+      await WhatsAppService.onDispatch(invoice);
+    } catch (e) {
+      console.warn('[WhatsApp] Failed to dispatch shipment alert:', e);
+    }
 
     return invoice;
   }
@@ -374,6 +390,13 @@ export class SalesOrderService {
         remainingCustomerOutstanding: customer.outstandingBalance
       }
     });
+
+    // WhatsApp Payment Receipt Notification Trigger
+    try {
+      await WhatsAppService.onPaymentReceived(payment, invoice, customer);
+    } catch (e) {
+      console.warn('[WhatsApp] Failed to dispatch payment receipt:', e);
+    }
 
     return { payment, invoice, customer };
   }
