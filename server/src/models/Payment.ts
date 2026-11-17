@@ -31,3 +31,4 @@ const PaymentSchema = new Schema<IPayment>({
 });
 
 export const Payment = model<IPayment>('Payment', PaymentSchema);
+

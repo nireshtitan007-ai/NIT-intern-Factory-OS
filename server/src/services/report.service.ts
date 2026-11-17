@@ -180,3 +180,4 @@ export class ReportService {
     return Object.values(customerMap).filter(c => c.totalOutstanding > 0);
   }
 }
+

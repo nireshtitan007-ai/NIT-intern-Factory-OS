@@ -43,3 +43,4 @@ const PurchaseSchema = new Schema<IPurchase>({
 });
 
 export const Purchase = model<IPurchase>('Purchase', PurchaseSchema);
+

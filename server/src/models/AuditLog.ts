@@ -23,3 +23,4 @@ const AuditLogSchema = new Schema<IAuditLog>({
 });
 
 export const AuditLog = model<IAuditLog>('AuditLog', AuditLogSchema);
+

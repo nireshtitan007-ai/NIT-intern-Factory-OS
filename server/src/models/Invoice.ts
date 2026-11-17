@@ -97,3 +97,4 @@ const InvoiceSchema = new Schema<IInvoice>({
 });
 
 export const Invoice = model<IInvoice>('Invoice', InvoiceSchema);
+

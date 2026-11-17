@@ -153,3 +153,4 @@ Use the top navigation bar to seamlessly switch between roles:
    - Review Sales Register, GSTR-1 outward supply summary, and Receivables aging. Export any table to CSV with 1 click.
 6. **👑 Business Owner Command Centre:**
    - Review overall factory revenue, gross profit margin (37.7%), and live benchmark verification metrics.
+

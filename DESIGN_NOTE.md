@@ -107,3 +107,4 @@ Salesmen in rural or weak network conditions create orders locally inside **Dexi
 1. The order is assigned a unique client UUID with status `QUEUED`.
 2. When network connectivity resumes, the PWA submits queued transactions in batch to `/api/orders/sync-batch`.
 3. The server checks idempotency against `offlineSyncId`, registers the order, and flags any stock shortages for Admin review without mutating the salesman's requested quantity.
+

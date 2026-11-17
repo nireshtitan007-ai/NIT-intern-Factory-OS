@@ -71,3 +71,4 @@ const StockMovementSchema = new Schema<IStockMovement>({
 });
 
 export const StockMovement = model<IStockMovement>('StockMovement', StockMovementSchema);
+

@@ -370,3 +370,4 @@ export const ProductionView: React.FC = () => {
     </div>
   );
 };
+

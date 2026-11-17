@@ -193,3 +193,4 @@ export class StockLedgerService {
     return StockMovement.find(query).sort({ createdAt: -1, _id: -1 }).lean();
   }
 }
+

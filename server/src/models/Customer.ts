@@ -35,3 +35,4 @@ const CustomerSchema = new Schema<ICustomer>({
 });
 
 export const Customer = model<ICustomer>('Customer', CustomerSchema);
+

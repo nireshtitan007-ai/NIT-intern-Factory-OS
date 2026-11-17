@@ -56,3 +56,4 @@ export const getPendingOfflineOrders = async () => {
 export const markOfflineOrderSynced = async (id: number) => {
   return await offlineDb.offlineOrdersQueue.update(id, { status: 'SYNCED' });
 };
+

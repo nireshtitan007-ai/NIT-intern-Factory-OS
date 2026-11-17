@@ -98,3 +98,4 @@ export const BenchmarkModal: React.FC<BenchmarkModalProps> = ({ isOpen, onClose,
     </div>
   );
 };
+

@@ -75,3 +75,4 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
 });
 
 export const SalesOrder = model<ISalesOrder>('SalesOrder', SalesOrderSchema);
+
