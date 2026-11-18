@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { 
-  Smartphone, 
   Lock, 
   User, 
   MapPin, 
-  Wifi, 
-  WifiOff, 
-  CheckCircle, 
   ArrowRight, 
   AlertCircle, 
-  Zap, 
   ShieldCheck,
   Building2,
-  Users
+  Users,
+  Compass
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
@@ -71,53 +67,56 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-3 sm:p-6 font-sans">
-      {/* Mobile Frame Container */}
-      <div className="w-full max-w-sm bg-slate-900 border-2 border-slate-700/80 rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col text-white">
-        {/* Simulated Phone Top Speaker & Camera Notch */}
-        <div className="bg-slate-950 pt-3 pb-2 px-6 flex items-center justify-between border-b border-slate-800">
-          <span className="text-[11px] font-mono font-semibold text-slate-400">9:41 AM</span>
-          <div className="w-20 h-4 bg-slate-900 rounded-full border border-slate-800 flex items-center justify-center">
-            <div className="w-2.5 h-2.5 rounded-full bg-slate-950"></div>
+    <div className="min-h-screen bg-cream-200 flex flex-col justify-between p-4 sm:p-6 font-sans">
+      {/* Top Bar */}
+      <header className="max-w-md w-full mx-auto flex items-center justify-between py-2">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 rounded-lg bg-forest-700 text-white flex items-center justify-center font-bold text-sm">
+            Z
           </div>
-          <div className="flex items-center space-x-1.5 text-slate-400">
-            <span className="text-[10px] font-bold text-emerald-400">5G</span>
-            <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-            <div className="w-4 h-2 border border-slate-400 rounded-sm p-0.5 flex items-center">
-              <div className="w-full h-full bg-emerald-400"></div>
+          <div>
+            <h1 className="font-bold text-sm text-charcoal-900 leading-tight">ZenLyft Mobile</h1>
+            <span className="text-[10px] text-forest-700 font-semibold block uppercase">Field Terminal</span>
+          </div>
+        </div>
+
+        {onBackToLanding && (
+          <button
+            onClick={onBackToLanding}
+            className="text-xs font-semibold text-charcoal-500 hover:text-charcoal-900 transition"
+          >
+            Public Site
+          </button>
+        )}
+      </header>
+
+      {/* Main Responsive Login Card */}
+      <main className="max-w-md w-full mx-auto my-auto py-6">
+        <div className="bg-white rounded-2xl border border-subtle-border shadow-sm p-6 sm:p-8">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-forest-100 text-forest-700 font-bold mb-3">
+              <Compass className="w-6 h-6" />
             </div>
+            <h2 className="text-xl font-bold text-charcoal-900 tracking-tight">Salesman Field Sign In</h2>
+            <p className="text-xs text-charcoal-500 mt-1">
+              Offline-ready order capture & daily customer route management
+            </p>
           </div>
-        </div>
 
-        {/* Mobile Header */}
-        <div className="p-6 pb-4 bg-gradient-to-b from-slate-900 to-indigo-950/60 border-b border-slate-800 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500 shadow-lg shadow-emerald-500/30 text-slate-950 mb-3 font-black text-xl">
-            <Smartphone className="w-6 h-6" />
-          </div>
-          <h2 className="text-xl font-black text-white tracking-tight">Salesman Mobile Terminal</h2>
-          <p className="text-xs text-emerald-400 font-semibold mt-0.5">ZenLyft Field Order & Collection OS</p>
-          <div className="mt-2 inline-flex items-center space-x-1 px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-[10px] text-emerald-300 font-medium">
-            <Zap className="w-3 h-3 text-emerald-400" />
-            <span>IndexedDB Offline Engine Armed</span>
-          </div>
-        </div>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {/* Form Body */}
-        <div className="p-6 flex-1 flex flex-col justify-between">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Salesman ID / Mobile No.
+              <label className="block text-xs font-semibold text-charcoal-700 mb-1">
+                Salesman ID / Username
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">
                   <User className="h-4 w-4" />
                 </div>
                 <input
@@ -126,17 +125,17 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="e.g. salesman_a"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Field Password / Quick PIN
+              <label className="block text-xs font-semibold text-charcoal-700 mb-1">
+                Access Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -144,28 +143,29 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter PIN / Password"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  placeholder="••••••••"
+                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Assigned Route / Territory
+              <label className="block text-xs font-semibold text-charcoal-700 mb-1">
+                Assigned Route Territory
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">
                   <MapPin className="h-4 w-4" />
                 </div>
                 <select
                   value={territory}
                   onChange={(e) => setTerritory(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 >
-                  <option value="Tamil Nadu Field">Tamil Nadu (Madurai / Trichy Route)</option>
-                  <option value="Karnataka Field">Karnataka (Bengaluru / Mysuru Route)</option>
-                  <option value="Kerala Route">Kerala (Palakkad / Kochi Route)</option>
+                  <option value="Tamil Nadu Field">Tamil Nadu Field Route (Trichy Central)</option>
+                  <option value="Tiruchirappalli North">Tiruchirappalli North Wholesale</option>
+                  <option value="Madurai East">Madurai East Retail Route</option>
+                  <option value="Coimbatore Commercial">Coimbatore Commercial Zone</option>
                 </select>
               </div>
             </div>
@@ -173,92 +173,72 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+              className="w-full py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center space-x-2 disabled:opacity-50"
             >
-              {loading ? (
-                <span>Syncing Terminal...</span>
-              ) : (
-                <>
-                  <span>Open Salesman Mobile Workspace</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              <span>{loading ? 'Authenticating Route Terminal...' : 'Enter Field Terminal'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* Quick Field Selection Buttons */}
-          <div className="mt-6 pt-4 border-t border-slate-800">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 text-center">
-              Quick 1-Tap Field Salesman Access
+          {/* Quick Select for Field Testing */}
+          <div className="mt-6 pt-5 border-t border-subtle-divider">
+            <span className="text-[11px] font-semibold text-charcoal-500 block mb-2 text-center">
+              Quick 1-Tap Authorized Field Accounts
             </span>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickSelect('salesman_a', 'Tamil Nadu Field')}
-                className={`p-2.5 rounded-xl border text-left text-xs transition ${
-                  username === 'salesman_a'
-                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                    : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                className={`p-2.5 rounded-lg border text-left transition ${
+                  username === 'salesman_a' 
+                    ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
+                    : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
                 }`}
               >
-                <div className="font-bold">Salesman A</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Tamil Nadu Route</div>
+                <div className="text-xs font-semibold">Salesman A</div>
+                <div className="text-[10px] text-charcoal-500">Tamil Nadu Route</div>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleQuickSelect('salesman_b', 'Karnataka Field')}
-                className={`p-2.5 rounded-xl border text-left text-xs transition ${
-                  username === 'salesman_b'
-                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                    : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                onClick={() => handleQuickSelect('salesman_b', 'Tiruchirappalli North')}
+                className={`p-2.5 rounded-lg border text-left transition ${
+                  username === 'salesman_b' 
+                    ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
+                    : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
                 }`}
               >
-                <div className="font-bold">Salesman B</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Karnataka Route</div>
+                <div className="text-xs font-semibold">Salesman B</div>
+                <div className="text-[10px] text-charcoal-500">Trichy Wholesale</div>
               </button>
             </div>
           </div>
-
-          {/* Switch to Other Portals */}
-          <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-            <button
-              type="button"
-              onClick={onSwitchToAdmin}
-              className="hover:text-amber-400 flex items-center space-x-1 transition"
-            >
-              <Building2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Admin Login</span>
-            </button>
-            <span className="text-slate-600">•</span>
-            <button
-              type="button"
-              onClick={onSwitchToStaff}
-              className="hover:text-indigo-400 flex items-center space-x-1 transition"
-            >
-              <Users className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Factory Staff Login</span>
-            </button>
-          </div>
-
-          {onBackToLanding && (
-            <div className="mt-3 text-center">
-              <button
-                type="button"
-                onClick={onBackToLanding}
-                className="text-[10px] text-slate-500 hover:text-slate-300 underline transition"
-              >
-                ← Back to Public Website & Pricing
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Simulated Phone Bottom Bar */}
-        <div className="py-2 flex items-center justify-center bg-slate-950 border-t border-slate-900">
-          <div className="w-28 h-1 bg-slate-600 rounded-full"></div>
+        {/* Portal Switchers */}
+        <div className="mt-4 flex items-center justify-center space-x-4 text-xs font-semibold text-charcoal-500">
+          <button 
+            onClick={onSwitchToAdmin}
+            className="hover:text-forest-700 transition flex items-center space-x-1"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-forest-600" />
+            <span>Admin Control Centre</span>
+          </button>
+          <span>•</span>
+          <button 
+            onClick={onSwitchToStaff}
+            className="hover:text-forest-700 transition flex items-center space-x-1"
+          >
+            <Users className="w-3.5 h-3.5 text-forest-600" />
+            <span>Factory Staff Login</span>
+          </button>
         </div>
-      </div>
+      </main>
+
+      {/* Footer Info */}
+      <footer className="max-w-md w-full mx-auto text-center py-2 text-[11px] text-charcoal-500">
+        IndexedDB Offline Synchronization Active • Strict Data Isolation
+      </footer>
     </div>
   );
 };

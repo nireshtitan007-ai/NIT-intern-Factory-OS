@@ -11,7 +11,8 @@ import {
   Invoice, 
   Payment, 
   StockMovement, 
-  AuditLog 
+  AuditLog,
+  Inquiry 
 } from '../models';
 import { StockLedgerService } from '../services/stockLedger.service';
 import { PurchaseService } from '../services/purchase.service';
@@ -19,6 +20,7 @@ import { ProductionService } from '../services/production.service';
 import { SalesOrderService } from '../services/salesOrder.service';
 import { ReportService } from '../services/report.service';
 import { WhatsAppService } from '../services/whatsapp.service';
+import { RealtimeService } from '../services/realtime.service';
 import { PDFInvoiceGenerator } from '../utils/pdfGenerator';
 import { CSVExportUtil } from '../utils/csvExport';
 import { seedBenchmarkData } from '../scripts/seedBenchmark';
@@ -500,6 +502,81 @@ export class ApiController {
       serverUrl: process.env.OPENWA_SERVER_URL || 'http://localhost:8080 (Simulated / Local)',
       status: 'ONLINE'
     });
+  }
+
+  // --- Public Inquiries & Pilot Onboarding ---
+  static async submitInquiry(req: Request, res: Response) {
+    try {
+      const { name, email, phone, company, fleetSize, inquiryType, message } = req.body;
+      if (!name || !email || !phone || !company) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Name, email, phone, and company name are required.' 
+        });
+      }
+
+      const inquiry = await Inquiry.create({
+        name,
+        email,
+        phone,
+        company,
+        fleetSize: fleetSize || '1-5',
+        inquiryType: inquiryType || 'contact',
+        message: message || '',
+        status: 'new'
+      });
+
+      await AuditLog.create({
+        action: 'INQUIRY_SUBMITTED',
+        entityType: 'Inquiry',
+        entityId: inquiry._id.toString(),
+        performedBy: name,
+        role: 'visitor',
+        details: { company, email, type: inquiry.inquiryType }
+      });
+
+      // Broadcast real-time event to Admin Control Centre
+      RealtimeService.broadcast('INQUIRY_RECEIVED', {
+        id: inquiry._id.toString(),
+        name,
+        company,
+        inquiryType: inquiry.inquiryType
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Your inquiry has been received. Our solutions team will contact you shortly.',
+        inquiryId: inquiry._id.toString()
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getInquiries(req: Request, res: Response) {
+    try {
+      const inquiries = await Inquiry.find().sort({ createdAt: -1 }).lean();
+      res.json({ success: true, inquiries });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async updateInquiryStatus(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+      const inquiry = await Inquiry.findById(id);
+      if (!inquiry) return res.status(404).json({ success: false, error: 'Inquiry not found' });
+
+      if (status) inquiry.status = status;
+      if (notes !== undefined) inquiry.notes = notes;
+      await inquiry.save();
+
+      res.json({ success: true, inquiry });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   }
 }
 

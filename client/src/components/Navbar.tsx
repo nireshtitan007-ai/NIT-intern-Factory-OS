@@ -1,12 +1,10 @@
 import React from 'react';
 import { UserRole, AppUser } from '../types';
 import { 
-  Smartphone, 
   Building2, 
   Factory, 
   Boxes, 
   FileSpreadsheet, 
-  TrendingUp, 
   Wifi, 
   WifiOff, 
   Play, 
@@ -14,7 +12,9 @@ import {
   MessageSquare,
   LogOut,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Compass,
+  User
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -28,7 +28,8 @@ interface NavbarProps {
   currentUser?: AppUser | null;
   onLogout?: () => void;
   onViewLandingPage?: () => void;
-  realtimeAlertCount?: number;
+  onOpenProfile?: () => void;
+  isProfileActive?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,21 +43,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   onLogout,
   onViewLandingPage,
-  realtimeAlertCount = 0
+  onOpenProfile,
+  isProfileActive = false
 }) => {
   const isAdminOrOwner = currentUser?.role === 'admin' || currentUser?.role === 'owner';
   const isSalesman = currentUser?.role === 'salesman' || currentUser?.role === 'sales_manager';
 
   const allRoles: Array<{ role: UserRole; label: string; icon: any; desc: string }> = [
-    { role: 'admin', label: 'Admin Control Centre', icon: Building2, desc: 'Centralized Platform Oversight' },
-    { role: 'salesman', label: 'Salesman Mobile', icon: Smartphone, desc: 'Field Orders (Offline Ready)' },
-    { role: 'production', label: 'Production Floor', icon: Factory, desc: 'BOM, Batch Runs, Variance' },
-    { role: 'accountant', label: 'Inventory & Ledger', icon: Boxes, desc: 'Authoritative Stock Balances' },
+    { role: 'admin', label: 'Admin Control Centre', icon: Building2, desc: 'Central Platform Oversight' },
+    { role: 'salesman', label: 'Field Terminal', icon: Compass, desc: 'Mobile Route Orders' },
+    { role: 'production', label: 'Production Floor', icon: Factory, desc: 'BOM & Batch Runs' },
+    { role: 'accountant', label: 'Central Inventory', icon: Boxes, desc: 'Authoritative Stock Ledger' },
     { role: 'owner', label: 'Accounts & Audit', icon: FileSpreadsheet, desc: 'GST, Sales, Traceability' },
-    { role: 'whatsapp', label: 'WhatsApp Hub', icon: MessageSquare, desc: 'OpenWA Automation Engine' },
+    { role: 'whatsapp', label: 'WhatsApp Automation', icon: MessageSquare, desc: 'OpenWA Notification Hub' },
   ];
 
-  // RBAC: Salesmen only see Salesman Mobile; non-admins only see permitted modules
+  // RBAC: Salesmen only see Salesman Field Terminal; non-admins only see permitted modules
   const visibleRoles = isAdminOrOwner 
     ? allRoles 
     : isSalesman
@@ -64,137 +66,132 @@ export const Navbar: React.FC<NavbarProps> = ({
     : allRoles.filter(r => r.role !== 'admin');
 
   return (
-    <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <header className="bg-forest-700 text-cream-50 shadow-sm sticky top-0 z-50 border-b border-forest-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Identity */}
-          <div className="flex items-center space-x-3">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white shadow-md ${
-              isSalesman ? 'bg-emerald-600' : 'bg-indigo-600'
-            }`}>
-              {isSalesman ? <Smartphone className="w-5 h-5" /> : 'Z'}
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={onViewLandingPage}>
+            <div className="w-8 h-8 rounded-lg bg-forest-900 border border-forest-600 flex items-center justify-center font-bold text-cream-50 shadow-sm">
+              Z
             </div>
             <div>
-              <span className="font-extrabold text-lg tracking-tight text-white">
-                {isSalesman ? 'ZenLyft Mobile' : 'ZenLyft'}
+              <span className="font-extrabold text-base tracking-tight text-cream-50">
+                ZenLyft OS
               </span>
-              <span className={`text-xs block font-medium ${
-                isSalesman ? 'text-emerald-400' : 'text-indigo-400'
-              }`}>
-                {isSalesman ? 'Field Sales Terminal' : 'Manufacturing Business OS'}
+              <span className="text-[10px] block font-medium text-forest-200 uppercase tracking-wider">
+                Manufacturing Nervous System
               </span>
             </div>
           </div>
 
-          {/* User Badge, Offline Simulator, Benchmark & Logout */}
+          {/* Operational Controls & Role Status */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Authenticated User Status */}
             {currentUser && (
-              <div className="flex items-center space-x-2 px-3 py-1 bg-slate-800/80 rounded-full border border-slate-700 text-xs">
+              <button
+                onClick={onOpenProfile}
+                title="View Account Profile"
+                className={`flex items-center space-x-1.5 px-3 py-1 rounded-full border text-xs transition ${
+                  isProfileActive
+                    ? 'bg-cream-50 text-forest-700 font-bold border-white'
+                    : 'bg-forest-800/80 text-cream-50 border-forest-600 hover:bg-forest-800'
+                }`}
+              >
                 {isAdminOrOwner ? (
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                ) : isSalesman ? (
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
                 ) : (
-                  <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  <User className="w-3.5 h-3.5 text-forest-200" />
                 )}
-                <span className="font-semibold text-slate-200">{currentUser.name}</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                  isAdminOrOwner 
-                    ? 'bg-amber-500/20 text-amber-300' 
-                    : isSalesman
-                    ? 'bg-emerald-500/20 text-emerald-300'
-                    : 'bg-indigo-500/20 text-indigo-300'
-                }`}>
+                <span className="font-semibold hidden sm:inline">{currentUser.name || currentUser.username}</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-forest-900/60 text-forest-100">
                   {currentUser.role}
                 </span>
-              </div>
+              </button>
             )}
 
-            {/* Offline Simulator Switch */}
+            {/* Offline Status Switch */}
             <button
               onClick={onToggleOffline}
               title={isOffline ? "App running offline (IndexedDB queue active)" : "App is online"}
-              className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold transition ${
+              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition ${
                 isOffline 
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
-                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40' 
+                  : 'bg-forest-800 text-forest-100 border border-forest-600'
               }`}
             >
               {isOffline ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{isOffline ? 'Offline' : 'Online'}</span>
             </button>
 
-            {/* Benchmark Runner Button (Visible to Admin & Evaluators) */}
+            {/* Benchmark Buttons (Visible to Admin) */}
             {isAdminOrOwner && (
               <>
                 <button
-                  onClick={onRunBenchmark}
+                  onClick={onSeedData}
                   disabled={isProcessing}
-                  className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow transition"
+                  title="Reset and seed Section 5 benchmark data"
+                  className="hidden md:flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-forest-800 hover:bg-forest-900 text-forest-100 border border-forest-600 transition disabled:opacity-50"
                 >
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                  <span className="hidden sm:inline">{isProcessing ? 'Verifying...' : 'Benchmark 100%'}</span>
+                  <RotateCcw className="w-3 h-3 text-forest-300" />
+                  <span>Seed Data</span>
                 </button>
 
                 <button
-                  onClick={onSeedData}
+                  onClick={onRunBenchmark}
                   disabled={isProcessing}
-                  title="Reset & seed benchmark master data"
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition"
+                  title="Run end-to-end benchmark scenario"
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition disabled:opacity-50"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <Play className="w-3 h-3 fill-white" />
+                  <span>Benchmark</span>
                 </button>
               </>
             )}
 
-            {/* Public Site Button */}
+            {/* Public Site Link */}
             {onViewLandingPage && (
               <button
                 onClick={onViewLandingPage}
-                title="View public product landing page"
-                className="hidden sm:flex items-center space-x-1 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition text-xs font-semibold"
+                className="hidden lg:inline-block text-xs font-semibold text-forest-200 hover:text-white transition px-2 py-1"
               >
-                <span>Public Site</span>
+                Public Site
               </button>
             )}
 
-            {/* Logout Button */}
+            {/* Logout */}
             {onLogout && (
               <button
                 onClick={onLogout}
-                title="Sign out of current workspace"
-                className="flex items-center space-x-1 p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-md transition text-xs font-semibold"
+                title="Log out of system"
+                className="p-1.5 rounded-lg bg-forest-800 hover:bg-red-700 text-forest-200 hover:text-white transition border border-forest-600"
               >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Role Navigation Bar (Only if multiple roles permitted) */}
-        {visibleRoles.length > 1 && (
-          <div className="flex space-x-1 overflow-x-auto pb-2 scrollbar-none border-t border-slate-800/80 pt-2">
-            {visibleRoles.map(({ role, label, icon: Icon }) => {
-              const isActive = currentRole === role;
-              return (
-                <button
-                  key={role}
-                  onClick={() => onSelectRole(role)}
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Module Sub-Navigation Bar */}
+        <div className="flex space-x-1 py-1.5 overflow-x-auto border-t border-forest-600/70">
+          {visibleRoles.map((item) => {
+            const Icon = item.icon;
+            const isActive = !isProfileActive && currentRole === item.role;
+            return (
+              <button
+                key={item.role}
+                onClick={() => onSelectRole(item.role)}
+                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                  isActive
+                    ? 'bg-cream-200 text-forest-700 shadow-sm'
+                    : 'text-forest-100 hover:bg-forest-600/80 hover:text-white'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </header>
   );

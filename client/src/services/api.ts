@@ -62,6 +62,33 @@ export const api = {
       body: JSON.stringify({ newPassword })
     }).then(r => r.json()),
 
+  updateProfile: (data: { name?: string; phone?: string; department?: string }) =>
+    fetch(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    fetch(`${API_BASE}/auth/change-password`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  // Public Inquiries & Pilot Requests
+  submitInquiry: (data: any) =>
+    fetch(`${API_BASE}/inquiries`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  getInquiries: () =>
+    fetch(`${API_BASE}/inquiries`, {
+      headers: getAuthHeaders()
+    }).then(r => r.json()),
+
   // Admin Control Centre & Overview
   getAdminOverview: () =>
     fetch(`${API_BASE}/admin/overview`, {

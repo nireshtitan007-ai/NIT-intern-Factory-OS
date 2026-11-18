@@ -11,6 +11,8 @@ router.post('/auth/login', AuthController.login);
 router.post('/auth/admin-login', AuthController.adminLogin);
 router.post('/auth/salesman-mobile-login', AuthController.salesmanMobileLogin);
 router.get('/auth/me', authenticate, AuthController.me);
+router.put('/auth/profile', authenticate, AuthController.updateProfile);
+router.put('/auth/change-password', authenticate, AuthController.changePassword);
 router.get('/auth/users', authenticate, requireAdmin, AuthController.listUsers);
 router.post('/auth/users', authenticate, requireAdmin, AuthController.createUser);
 router.put('/auth/users/:id/status', authenticate, requireAdmin, AuthController.toggleUserStatus);
@@ -76,5 +78,10 @@ router.get('/audit-logs', ApiController.getAuditLogs);
 router.get('/whatsapp/notifications', ApiController.getWhatsAppNotifications);
 router.post('/whatsapp/send-test', ApiController.sendTestWhatsApp);
 router.get('/whatsapp/status', ApiController.getWhatsAppStatus);
+
+// --- Public Inquiries & Enterprise Onboarding ---
+router.post('/inquiries', ApiController.submitInquiry);
+router.get('/inquiries', authenticate, requireAdmin, ApiController.getInquiries);
+router.put('/inquiries/:id', authenticate, requireAdmin, ApiController.updateInquiryStatus);
 
 export default router;

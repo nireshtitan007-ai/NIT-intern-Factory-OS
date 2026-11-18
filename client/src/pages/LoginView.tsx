@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   ShieldCheck, 
-  UserCheck, 
   Lock, 
   User, 
   ArrowRight, 
   AlertCircle, 
-  CheckCircle2, 
   Building2, 
   Users, 
-  Sparkles,
-  Smartphone,
-  MapPin,
-  Zap
+  Compass
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
@@ -21,24 +16,21 @@ import { SalesmanMobileLoginView } from './SalesmanMobileLoginView';
 interface LoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
   onBackToLanding?: () => void;
+  initialMode?: 'salesman' | 'admin' | 'staff';
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLanding }) => {
-  // Check if URL specifies salesman mode e.g. ?mode=salesman or ?mobile=true
-  const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'salesman' || params.get('mobile') === 'true' || params.get('view') === 'salesman') {
-      return 'salesman';
-    }
-    return 'salesman'; // Default to salesman mobile login as requested by user
-  });
-
+export const LoginView: React.FC<LoginViewProps> = ({ 
+  onLoginSuccess, 
+  onBackToLanding,
+  initialMode = 'admin'
+}) => {
+  const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(initialMode);
   const [username, setUsername] = useState('factory_admin');
   const [password, setPassword] = useState('Admin@123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // If salesman mode is selected, render the dedicated smartphone mobile login
+  // If salesman mode is selected, render the responsive Salesman Mobile Login
   if (loginMode === 'salesman') {
     return (
       <SalesmanMobileLoginView
@@ -62,10 +54,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLa
 
   const demoAccounts = [
     { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive' },
-    { username: 'owner', pass: 'Admin@123', label: 'Factory Business Owner', role: 'owner', type: 'admin', dept: 'Board' },
+    { username: 'owner', pass: 'Admin@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board' },
     { username: 'supervisor', pass: 'Nash@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Manufacturing' },
     { username: 'inventory_mgr', pass: 'Nash@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Warehouse' },
-    { username: 'purchase_mgr', pass: 'Nash@123', label: 'Purchase Manager', role: 'purchase', type: 'staff', dept: 'Procurement' },
     { username: 'accountant', pass: 'Nash@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Finance' },
     { username: 'auditor', pass: 'Nash@123', label: 'Statutory Auditor', role: 'auditor', type: 'staff', dept: 'Audit' },
   ];
@@ -79,16 +70,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
+    setError(null);
 
     try {
-      let res;
-      if (loginMode === 'admin') {
-        res = await api.adminLogin({ username, password });
-      } else {
-        res = await api.login({ username, password });
-      }
+      const endpoint = loginMode === 'admin' ? api.adminLogin : api.login;
+      const res = await endpoint({ username, password });
 
       if (!res.success) {
         throw new Error(res.error || 'Authentication failed');
@@ -105,117 +92,108 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLa
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 shadow-xl shadow-indigo-500/30 text-white font-extrabold text-2xl mb-4 border border-indigo-400/40">
-          Z
-        </div>
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          ZenLyft Manufacturing OS
-        </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Commercial Multi-User Operating System • Centre for Digital Infrastructure
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl px-4">
-        {/* Three Distinct Login Experiences Tab Selector */}
-        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-950/60 rounded-xl border border-slate-700/60 mb-6 backdrop-blur-md text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setLoginMode('salesman')}
-            className="flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-lg text-emerald-400 hover:text-white hover:bg-slate-800/50 transition font-bold"
-          >
-            <Smartphone className="w-4 h-4 text-emerald-400" />
-            <span>Salesman Mobile</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setLoginMode('admin');
-              setUsername('factory_admin');
-              setPassword('Admin@123');
-              setError(null);
-            }}
-            className={`flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-lg transition-all ${
-              loginMode === 'admin'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 font-bold'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Admin Centre</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setLoginMode('staff');
-              setUsername('supervisor');
-              setPassword('Nash@123');
-              setError(null);
-            }}
-            className={`flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-lg transition-all ${
-              loginMode === 'staff'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 font-bold'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Factory Staff</span>
-          </button>
+    <div className="min-h-screen bg-cream-200 flex flex-col justify-between p-4 sm:p-6 font-sans">
+      {/* Header */}
+      <header className="max-w-md w-full mx-auto flex items-center justify-between py-2">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 rounded-lg bg-forest-700 text-white flex items-center justify-center font-bold text-sm">
+            Z
+          </div>
+          <div>
+            <h1 className="font-bold text-sm text-charcoal-900 leading-tight">ZenLyft OS</h1>
+            <span className="text-[10px] text-forest-700 font-semibold block uppercase">Enterprise Gateway</span>
+          </div>
         </div>
 
-        {/* Main Login Card */}
-        <div className="bg-slate-900/90 backdrop-blur-xl py-8 px-6 sm:px-10 shadow-2xl rounded-2xl border border-slate-700/80">
-          <div className="mb-6 pb-4 border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                {loginMode === 'admin' ? (
-                  <>
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span>Admin Control Centre Login</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
-                    <span>Factory & Accounts Staff Login</span>
-                  </>
-                )}
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {loginMode === 'admin' 
-                  ? 'Authoritative platform management, user administration & executive control.'
-                  : 'Role-based access: Production Supervisor, Inventory Manager, Accountant, Auditor.'}
-              </p>
-            </div>
-            <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-              loginMode === 'admin'
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
-            }`}>
-              {loginMode === 'admin' ? 'ADMIN LEVEL 1' : 'STAFF LEVEL 2'}
-            </span>
+        {onBackToLanding && (
+          <button
+            onClick={onBackToLanding}
+            className="text-xs font-semibold text-charcoal-500 hover:text-charcoal-900 transition"
+          >
+            Public Site
+          </button>
+        )}
+      </header>
+
+      {/* Main Login Card */}
+      <main className="max-w-md w-full mx-auto my-auto py-6">
+        <div className="bg-white rounded-2xl border border-subtle-border shadow-sm p-6 sm:p-8">
+          
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-cream-100 rounded-xl mb-6 border border-subtle-border">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('salesman');
+              }}
+              className="py-2 text-[11px] font-semibold rounded-lg transition text-charcoal-500 hover:text-charcoal-900 flex items-center justify-center space-x-1"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Salesman</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('admin');
+                setUsername('factory_admin');
+                setPassword('Admin@123');
+                setError(null);
+              }}
+              className={`py-2 text-[11px] font-bold rounded-lg transition flex items-center justify-center space-x-1 ${
+                loginMode === 'admin'
+                  ? 'bg-forest-700 text-white shadow-sm'
+                  : 'text-charcoal-500 hover:text-charcoal-900'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Desk</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('staff');
+                setUsername('supervisor');
+                setPassword('Nash@123');
+                setError(null);
+              }}
+              className={`py-2 text-[11px] font-bold rounded-lg transition flex items-center justify-center space-x-1 ${
+                loginMode === 'staff'
+                  ? 'bg-forest-700 text-white shadow-sm'
+                  : 'text-charcoal-500 hover:text-charcoal-900'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Factory Staff</span>
+            </button>
+          </div>
+
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-charcoal-900 tracking-tight">
+              {loginMode === 'admin' ? 'Admin Control Centre' : 'Factory Operations Portal'}
+            </h2>
+            <p className="text-xs text-charcoal-500 mt-1">
+              {loginMode === 'admin'
+                ? 'Centralized business oversight, approvals & user administration'
+                : 'Role-based access for production, inventory & financial staff'}
+            </p>
           </div>
 
           {error && (
-            <div className="mb-5 p-3.5 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-start space-x-3 text-rose-300 text-sm">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-400" />
-              <div>
-                <p className="font-semibold">Authentication Error</p>
-                <p className="text-xs text-rose-300/90 mt-0.5">{error}</p>
-              </div>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Username / Employee ID
+              <label className="block text-xs font-semibold text-charcoal-700 mb-1">
+                Username / Email
               </label>
-              <div className="relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">
                   <User className="h-4 w-4" />
                 </div>
                 <input
@@ -223,18 +201,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLa
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder={loginMode === 'admin' ? 'e.g. factory_admin' : 'e.g. supervisor, accountant'}
-                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="e.g. factory_admin"
+                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Password
+              <label className="block text-xs font-semibold text-charcoal-700 mb-1">
+                Secure Password
               </label>
-              <div className="relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -242,8 +220,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLa
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your confidential password"
-                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="••••••••"
+                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
               </div>
             </div>
@@ -251,91 +229,45 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLa
             <button
               type="submit"
               disabled={loading}
-              className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-bold text-sm shadow-lg transition-all ${
-                loginMode === 'admin'
-                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
-              } disabled:opacity-50`}
+              className="w-full py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center space-x-2 disabled:opacity-50"
             >
-              {loading ? (
-                <span>Verifying Credentials...</span>
-              ) : (
-                <>
-                  <span>
-                    {loginMode === 'admin' ? 'Enter Admin Control Centre' : 'Login to Staff Workspace'}
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              <span>{loading ? 'Authenticating...' : 'Sign In to Workplace'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* Quick Demo Credentials Panel */}
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-slate-400 flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>One-Click Role Selection</span>
-              </span>
-              <span className="text-[11px] text-slate-500">Live MongoDB Atlas</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {demoAccounts.map((acc) => {
-                const isSelected = username === acc.username;
-                return (
+          {/* Quick Demo Credentials */}
+          <div className="mt-6 pt-5 border-t border-subtle-divider">
+            <span className="text-[11px] font-semibold text-charcoal-500 block mb-2 text-center">
+              1-Click Verified Role Credentials
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {demoAccounts
+                .filter(a => a.type === loginMode)
+                .map((acc) => (
                   <button
                     key={acc.username}
                     type="button"
                     onClick={() => handleSelectDemo(acc)}
-                    className={`text-left p-2 rounded-lg border text-xs transition ${
-                      isSelected
-                        ? 'bg-indigo-600/20 border-indigo-500/60 text-white'
-                        : 'bg-slate-800/50 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
+                    className={`p-2 rounded-lg border text-left transition ${
+                      username === acc.username 
+                        ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
+                        : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
                     }`}
                   >
-                    <div className="font-semibold truncate">{acc.label}</div>
-                    <div className="text-[10px] text-slate-400 flex items-center justify-between mt-0.5">
-                      <span>{acc.username}</span>
-                      <span className="font-mono text-[9px] text-indigo-300">{acc.role}</span>
-                    </div>
+                    <div className="text-xs font-semibold">{acc.label}</div>
+                    <div className="text-[10px] text-charcoal-500">{acc.dept}</div>
                   </button>
-                );
-              })}
+                ))}
             </div>
           </div>
         </div>
+      </main>
 
-        {/* Salesman Direct Mobile Pill Banner */}
-        <div className="mt-6 p-4 rounded-xl bg-slate-900 border border-emerald-500/40 shadow-xl flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-white">Using a Mobile Phone in the Field?</h4>
-              <p className="text-xs text-slate-400">Switch to the dedicated high-speed mobile terminal</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setLoginMode('salesman')}
-            className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg shadow-md transition"
-          >
-            Open Mobile Login
-          </button>
-        </div>
-
-        {onBackToLanding && (
-          <div className="mt-5 text-center">
-            <button
-              onClick={onBackToLanding}
-              className="text-xs text-slate-500 hover:text-slate-300 underline transition"
-            >
-              ← Back to Public Landing Page & Pricing
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Footer */}
+      <footer className="max-w-md w-full mx-auto text-center py-2 text-[11px] text-charcoal-500">
+        ZenLyft Manufacturing OS • Live MongoDB Atlas
+      </footer>
     </div>
   );
 };

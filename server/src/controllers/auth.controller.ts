@@ -402,5 +402,97 @@ export class AuthController {
       res.status(500).json({ success: false, error: err.message });
     }
   }
+
+  /**
+   * User Self-Service: Update Profile
+   */
+  static async updateProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { name, phone, department } = req.body;
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      if (name) user.name = name.trim();
+      if (phone) user.phone = phone.trim();
+      if (department) user.department = department.trim();
+
+      await user.save();
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          id: user._id.toString(),
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          department: user.department,
+          phone: user.phone
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  /**
+   * User Self-Service: Change Password
+   */
+  static async changePassword(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ success: false, error: 'Current and new password are required' });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+        return;
+      }
+
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        res.status(400).json({ success: false, error: 'Current password is incorrect' });
+        return;
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(newPassword, salt);
+      await user.save();
+
+      await AuditLog.create({
+        action: 'PASSWORD_CHANGED',
+        entityType: 'User',
+        entityId: user._id.toString(),
+        performedBy: user.username,
+        role: user.role,
+        details: { note: 'User self-changed password' }
+      });
+
+      res.json({ success: true, message: 'Password changed successfully' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 }
 
