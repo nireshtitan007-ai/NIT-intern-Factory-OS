@@ -36,13 +36,21 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
     expect(adminRes.body.success).toBe(true);
     adminToken = adminRes.body.token;
 
-    // 2. Authenticate Salesman
+    // 2. Authenticate Salesman via Dedicated Mobile Terminal
     const salesmanRes = await request(app)
-      .post('/api/auth/login')
-      .send({ username: 'salesman_a', password: 'Nash@123' });
+      .post('/api/auth/salesman-mobile-login')
+      .send({ username: 'salesman_a', password: 'Nash@123', routeTerritory: 'Tamil Nadu Field' });
     expect(salesmanRes.status).toBe(200);
     expect(salesmanRes.body.success).toBe(true);
+    expect(salesmanRes.body.isMobileSession).toBe(true);
     salesmanToken = salesmanRes.body.token;
+
+    // Verify Admin cannot authenticate through Salesman Mobile Terminal
+    const adminMobileAttempt = await request(app)
+      .post('/api/auth/salesman-mobile-login')
+      .send({ username: 'factory_admin', password: 'Admin@123' });
+    expect(adminMobileAttempt.status).toBe(403);
+    expect(adminMobileAttempt.body.error).toContain('cannot log in through the Field Salesman Mobile interface');
   });
 
   afterAll(async () => {

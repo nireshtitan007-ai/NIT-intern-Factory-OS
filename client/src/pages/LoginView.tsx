@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   UserCheck, 
@@ -10,36 +10,66 @@ import {
   Building2, 
   Users, 
   Sparkles,
-  KeyRound
+  Smartphone,
+  MapPin,
+  Zap
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
+import { SalesmanMobileLoginView } from './SalesmanMobileLoginView';
 
 interface LoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const [loginMode, setLoginMode] = useState<'admin' | 'user'>('admin');
+  // Check if URL specifies salesman mode e.g. ?mode=salesman or ?mobile=true
+  const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'salesman' || params.get('mobile') === 'true' || params.get('view') === 'salesman') {
+      return 'salesman';
+    }
+    return 'salesman'; // Default to salesman mobile login as requested by user
+  });
+
   const [username, setUsername] = useState('factory_admin');
   const [password, setPassword] = useState('Admin@123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // If salesman mode is selected, render the dedicated smartphone mobile login
+  if (loginMode === 'salesman') {
+    return (
+      <SalesmanMobileLoginView
+        onLoginSuccess={onLoginSuccess}
+        onSwitchToAdmin={() => {
+          setLoginMode('admin');
+          setUsername('factory_admin');
+          setPassword('Admin@123');
+          setError(null);
+        }}
+        onSwitchToStaff={() => {
+          setLoginMode('staff');
+          setUsername('supervisor');
+          setPassword('Nash@123');
+          setError(null);
+        }}
+      />
+    );
+  }
+
   const demoAccounts = [
     { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive' },
     { username: 'owner', pass: 'Admin@123', label: 'Factory Business Owner', role: 'owner', type: 'admin', dept: 'Board' },
-    { username: 'salesman_a', pass: 'Nash@123', label: 'Salesman A (Tamil Nadu)', role: 'salesman', type: 'user', dept: 'Field Sales' },
-    { username: 'sales_mgr', pass: 'Nash@123', label: 'Sales Manager', role: 'sales_manager', type: 'user', dept: 'Sales & Dist.' },
-    { username: 'supervisor', pass: 'Nash@123', label: 'Production Supervisor', role: 'production', type: 'user', dept: 'Manufacturing' },
-    { username: 'inventory_mgr', pass: 'Nash@123', label: 'Inventory Manager', role: 'inventory', type: 'user', dept: 'Warehouse' },
-    { username: 'purchase_mgr', pass: 'Nash@123', label: 'Purchase Manager', role: 'purchase', type: 'user', dept: 'Procurement' },
-    { username: 'accountant', pass: 'Nash@123', label: 'Senior Accountant', role: 'accountant', type: 'user', dept: 'Finance' },
-    { username: 'auditor', pass: 'Nash@123', label: 'Statutory Auditor', role: 'auditor', type: 'user', dept: 'Audit' },
+    { username: 'supervisor', pass: 'Nash@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Manufacturing' },
+    { username: 'inventory_mgr', pass: 'Nash@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Warehouse' },
+    { username: 'purchase_mgr', pass: 'Nash@123', label: 'Purchase Manager', role: 'purchase', type: 'staff', dept: 'Procurement' },
+    { username: 'accountant', pass: 'Nash@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Finance' },
+    { username: 'auditor', pass: 'Nash@123', label: 'Statutory Auditor', role: 'auditor', type: 'staff', dept: 'Audit' },
   ];
 
   const handleSelectDemo = (account: typeof demoAccounts[0]) => {
-    setLoginMode(account.type as 'admin' | 'user');
+    setLoginMode(account.type as any);
     setUsername(account.username);
     setPassword(account.pass);
     setError(null);
@@ -82,13 +112,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           ZenLyft Manufacturing OS
         </h2>
         <p className="mt-2 text-sm text-slate-400">
-          Commercial Multi-User Operating System • NIT Tiruchirappalli Internship
+          Commercial Multi-User Operating System • Centre for Digital Infrastructure
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl px-4">
-        {/* Two Distinct Login Experiences Tab Selector */}
-        <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-950/60 rounded-xl border border-slate-700/60 mb-6 backdrop-blur-md">
+        {/* Three Distinct Login Experiences Tab Selector */}
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-950/60 rounded-xl border border-slate-700/60 mb-6 backdrop-blur-md text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setLoginMode('salesman')}
+            className="flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-lg text-emerald-400 hover:text-white hover:bg-slate-800/50 transition font-bold"
+          >
+            <Smartphone className="w-4 h-4 text-emerald-400" />
+            <span>Salesman Mobile</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -97,32 +136,32 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               setPassword('Admin@123');
               setError(null);
             }}
-            className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
+            className={`flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-lg transition-all ${
               loginMode === 'admin'
                 ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Admin Control Centre</span>
+            <span>Admin Centre</span>
           </button>
 
           <button
             type="button"
             onClick={() => {
-              setLoginMode('user');
-              setUsername('salesman_a');
+              setLoginMode('staff');
+              setUsername('supervisor');
               setPassword('Nash@123');
               setError(null);
             }}
-            className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-              loginMode === 'user'
+            className={`flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-lg transition-all ${
+              loginMode === 'staff'
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             }`}
           >
-            <UserCheck className="w-4 h-4" />
-            <span>Employee User Login</span>
+            <Users className="w-4 h-4" />
+            <span>Factory Staff</span>
           </button>
         </div>
 
@@ -139,14 +178,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 ) : (
                   <>
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
-                    <span>Employee Role Authentication</span>
+                    <span>Factory & Accounts Staff Login</span>
                   </>
                 )}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 {loginMode === 'admin' 
                   ? 'Authoritative platform management, user administration & executive control.'
-                  : 'Role-based access: Salesman, Production, Inventory, Accounts, Auditor.'}
+                  : 'Role-based access: Production Supervisor, Inventory Manager, Accountant, Auditor.'}
               </p>
             </div>
             <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
@@ -154,7 +193,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                 : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
             }`}>
-              {loginMode === 'admin' ? 'SECURE LEVEL 1' : 'RBAC LEVEL 2'}
+              {loginMode === 'admin' ? 'ADMIN LEVEL 1' : 'STAFF LEVEL 2'}
             </span>
           </div>
 
@@ -182,7 +221,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder={loginMode === 'admin' ? 'e.g. factory_admin' : 'e.g. salesman_a, supervisor'}
+                  placeholder={loginMode === 'admin' ? 'e.g. factory_admin' : 'e.g. supervisor, accountant'}
                   className="block w-full pl-10 pr-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
@@ -217,11 +256,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               } disabled:opacity-50`}
             >
               {loading ? (
-                <span>Authenticating with Central Database...</span>
+                <span>Verifying Credentials...</span>
               ) : (
                 <>
                   <span>
-                    {loginMode === 'admin' ? 'Enter Admin Control Centre' : 'Login to Workspace'}
+                    {loginMode === 'admin' ? 'Enter Admin Control Centre' : 'Login to Staff Workspace'}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
@@ -234,7 +273,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-slate-400 flex items-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>One-Click Role Selection (Evaluation Sandbox)</span>
+                <span>One-Click Role Selection</span>
               </span>
               <span className="text-[11px] text-slate-500">Live MongoDB Atlas</span>
             </div>
@@ -262,16 +301,26 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 );
               })}
             </div>
-            <p className="text-[11px] text-slate-500 text-center mt-3">
-              Admin pass: <code className="text-slate-400 font-mono">Admin@123</code> • Employee pass: <code className="text-slate-400 font-mono">Nash@123</code>
-            </p>
           </div>
         </div>
 
-        {/* Security & Commercial Architecture Badge */}
-        <div className="mt-6 text-center text-xs text-slate-500 space-y-1">
-          <p>Strict RBAC Token Verification • BCrypt 10-Round Salt • Rate Limited Sessions</p>
-          <p>Centre for Digital Infrastructure, NIT Tiruchirappalli</p>
+        {/* Salesman Direct Mobile Pill Banner */}
+        <div className="mt-6 p-4 rounded-xl bg-slate-900 border border-emerald-500/40 shadow-xl flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white">Using a Mobile Phone in the Field?</h4>
+              <p className="text-xs text-slate-400">Switch to the dedicated high-speed mobile terminal</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setLoginMode('salesman')}
+            className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg shadow-md transition"
+          >
+            Open Mobile Login
+          </button>
         </div>
       </div>
     </div>

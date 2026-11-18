@@ -9,6 +9,7 @@ const router = Router();
 // --- Authentication & Multi-User Identity ---
 router.post('/auth/login', AuthController.login);
 router.post('/auth/admin-login', AuthController.adminLogin);
+router.post('/auth/salesman-mobile-login', AuthController.salesmanMobileLogin);
 router.get('/auth/me', authenticate, AuthController.me);
 router.get('/auth/users', authenticate, requireAdmin, AuthController.listUsers);
 router.post('/auth/users', authenticate, requireAdmin, AuthController.createUser);

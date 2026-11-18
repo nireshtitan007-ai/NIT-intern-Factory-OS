@@ -24,6 +24,13 @@ export const api = {
       body: JSON.stringify(credentials)
     }).then(r => r.json()),
 
+  salesmanMobileLogin: (credentials: { username: string; password: string; routeTerritory?: string }) =>
+    fetch(`${API_BASE}/auth/salesman-mobile-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    }).then(r => r.json()),
+
   getMe: () =>
     fetch(`${API_BASE}/auth/me`, {
       headers: getAuthHeaders()

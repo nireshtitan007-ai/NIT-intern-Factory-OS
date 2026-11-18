@@ -89,6 +89,89 @@ export class AuthController {
   }
 
   /**
+   * Dedicated Salesman Mobile Login (Specifically enforces field salesman role)
+   */
+  static async salesmanMobileLogin(req: Request, res: Response): Promise<void> {
+    try {
+      const { username, password, phone, deviceId, routeTerritory } = req.body;
+      const lookupIdentifier = (username || phone || '').toLowerCase().trim();
+
+      if (!lookupIdentifier || !password) {
+        res.status(400).json({ success: false, error: 'Salesman username/phone and password/PIN are required.' });
+        return;
+      }
+
+      // Find user by either username or phone
+      const user = await User.findOne({
+        $or: [
+          { username: lookupIdentifier },
+          { phone: lookupIdentifier }
+        ]
+      });
+
+      if (!user) {
+        res.status(401).json({ success: false, error: 'Salesman account not found with provided identifier.' });
+        return;
+      }
+
+      if (user.role !== 'salesman' && user.role !== 'sales_manager') {
+        res.status(403).json({
+          success: false,
+          error: `Access Denied: Account '${user.username}' has role '${user.role}' and cannot log in through the Field Salesman Mobile interface. Please use the Desktop / Admin Login.`
+        });
+        return;
+      }
+
+      if (!user.active) {
+        res.status(403).json({ success: false, error: 'Salesman mobile account is currently deactivated.' });
+        return;
+      }
+
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        res.status(401).json({ success: false, error: 'Invalid password or PIN.' });
+        return;
+      }
+
+      user.loginCount += 1;
+      user.lastLoginAt = new Date();
+      await user.save();
+
+      const token = generateToken(user);
+
+      await AuditLog.create({
+        action: 'SALESMAN_MOBILE_LOGIN',
+        entityType: 'User',
+        entityId: user._id.toString(),
+        performedBy: user.username,
+        role: user.role,
+        details: {
+          platform: 'MOBILE_FIELD_APP',
+          deviceId: deviceId || 'SMARTPHONE_DEVICE',
+          territory: routeTerritory || user.branch
+        }
+      });
+
+      res.json({
+        success: true,
+        token,
+        isMobileSession: true,
+        user: {
+          id: user._id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          department: user.department,
+          branch: user.branch,
+          permissions: user.permissions
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  /**
    * Dedicated Admin Login (Strictly verifies Admin/Owner role)
    */
   static async adminLogin(req: Request, res: Response): Promise<void> {
