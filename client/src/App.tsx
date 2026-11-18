@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserRole, AppUser } from './types';
 import { Navbar } from './components/Navbar';
 import { BenchmarkModal } from './components/BenchmarkModal';
+import { LandingPageView } from './pages/LandingPageView';
 import { LoginView } from './pages/LoginView';
 import { AdminControlCenterView } from './pages/AdminControlCenterView';
 import { AdminDeskView } from './pages/AdminDeskView';
@@ -39,6 +40,16 @@ export const App: React.FC = () => {
       // fallback
     }
     return 'admin';
+  });
+
+  // Landing Page vs Login/App View Selector
+  const [showLandingPage, setShowLandingPage] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'salesman' || params.get('mode') === 'admin' || params.get('login') === 'true' || params.get('app') === 'true') {
+      return false;
+    }
+    // If not authenticated and no specific mode specified, show public landing page
+    return !localStorage.getItem('zenlyft_user');
   });
 
   const [isOffline, setIsOffline] = useState(false);
@@ -97,6 +108,7 @@ export const App: React.FC = () => {
 
   const handleLoginSuccess = (user: AppUser, token: string) => {
     setCurrentUser(user);
+    setShowLandingPage(false);
     if (user.role === 'admin' || user.role === 'owner') {
       setCurrentRole('admin');
     } else if (user.role === 'salesman' || user.role === 'sales_manager') {
@@ -118,6 +130,7 @@ export const App: React.FC = () => {
     localStorage.removeItem('zenlyft_token');
     localStorage.removeItem('zenlyft_user');
     setCurrentUser(null);
+    setShowLandingPage(true);
   };
 
   const handleRunBenchmark = async () => {
@@ -146,11 +159,35 @@ export const App: React.FC = () => {
     }
   };
 
-  // If user is not authenticated, present the Two Distinct Login Experiences
-  if (!currentUser) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  // 1. If public landing page is active
+  if (showLandingPage) {
+    return (
+      <>
+        <LandingPageView
+          onEnterApp={() => setShowLandingPage(false)}
+          onOpenBenchmark={handleRunBenchmark}
+        />
+        {/* Benchmark Results Modal available on Landing Page */}
+        <BenchmarkModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          result={benchmarkResult}
+        />
+      </>
+    );
   }
 
+  // 2. If user is not authenticated, present the Multi-Portal Login
+  if (!currentUser) {
+    return (
+      <LoginView 
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={() => setShowLandingPage(true)}
+      />
+    );
+  }
+
+  // 3. Authenticated Enterprise Workplace
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
       <Navbar
@@ -163,6 +200,7 @@ export const App: React.FC = () => {
         isProcessing={isProcessing}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onViewLandingPage={() => setShowLandingPage(true)}
       />
 
       {/* Real-time Toast Notification (Server-Sent Events) */}
@@ -179,10 +217,10 @@ export const App: React.FC = () => {
       )}
 
       <main className="flex-1 pb-16">
-        {/* Admin Control Centre (Authoritative Control) */}
+        {/* Admin Control Centre (Authoritative Governance) */}
         {currentRole === 'admin' && <AdminControlCenterView />}
 
-        {/* Operational Modules */}
+        {/* Operational Roles */}
         {currentRole === 'salesman' && <SalesmanView isOffline={isOffline} />}
         {currentRole === 'production' && <ProductionView />}
         {currentRole === 'accountant' && <InventoryView />}

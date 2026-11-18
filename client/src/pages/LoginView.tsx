@@ -20,9 +20,10 @@ import { SalesmanMobileLoginView } from './SalesmanMobileLoginView';
 
 interface LoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
+  onBackToLanding?: () => void;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToLanding }) => {
   // Check if URL specifies salesman mode e.g. ?mode=salesman or ?mobile=true
   const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,6 +55,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           setPassword('Nash@123');
           setError(null);
         }}
+        onBackToLanding={onBackToLanding}
       />
     );
   }
@@ -322,6 +324,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             Open Mobile Login
           </button>
         </div>
+
+        {onBackToLanding && (
+          <div className="mt-5 text-center">
+            <button
+              onClick={onBackToLanding}
+              className="text-xs text-slate-500 hover:text-slate-300 underline transition"
+            >
+              ← Back to Public Landing Page & Pricing
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

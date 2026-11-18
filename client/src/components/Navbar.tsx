@@ -27,6 +27,7 @@ interface NavbarProps {
   isProcessing: boolean;
   currentUser?: AppUser | null;
   onLogout?: () => void;
+  onViewLandingPage?: () => void;
   realtimeAlertCount?: number;
 }
 
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isProcessing,
   currentUser,
   onLogout,
+  onViewLandingPage,
   realtimeAlertCount = 0
 }) => {
   const isAdminOrOwner = currentUser?.role === 'admin' || currentUser?.role === 'owner';
@@ -144,6 +146,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <RotateCcw className="w-4 h-4" />
                 </button>
               </>
+            )}
+
+            {/* Public Site Button */}
+            {onViewLandingPage && (
+              <button
+                onClick={onViewLandingPage}
+                title="View public product landing page"
+                className="hidden sm:flex items-center space-x-1 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition text-xs font-semibold"
+              >
+                <span>Public Site</span>
+              </button>
             )}
 
             {/* Logout Button */}

@@ -21,12 +21,14 @@ interface SalesmanMobileLoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
   onSwitchToAdmin: () => void;
   onSwitchToStaff: () => void;
+  onBackToLanding?: () => void;
 }
 
 export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = ({
   onLoginSuccess,
   onSwitchToAdmin,
-  onSwitchToStaff
+  onSwitchToStaff,
+  onBackToLanding
 }) => {
   const [username, setUsername] = useState('salesman_a');
   const [password, setPassword] = useState('Nash@123');
@@ -238,6 +240,18 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
               <span>Factory Staff Login</span>
             </button>
           </div>
+
+          {onBackToLanding && (
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={onBackToLanding}
+                className="text-[10px] text-slate-500 hover:text-slate-300 underline transition"
+              >
+                ← Back to Public Website & Pricing
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Simulated Phone Bottom Bar */}
