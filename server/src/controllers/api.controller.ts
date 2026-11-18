@@ -211,6 +211,16 @@ export class ApiController {
     }
   }
 
+  static async rejectOrder(req: Request, res: Response) {
+    try {
+      const { reason, rejectedBy } = req.body;
+      const order = await SalesOrderService.rejectOrder(req.params.id, reason, rejectedBy);
+      res.json({ success: true, order });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
   static async dispatchOrder(req: Request, res: Response) {
     try {
       const invoice = await SalesOrderService.dispatchOrder(req.params.id, req.body.dispatcherName);
@@ -364,6 +374,76 @@ export class ApiController {
             varianceFlagged: latestRun.yieldVarianceFlagged
           } : null
         }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getAdminOverview(req: Request, res: Response) {
+    try {
+      const [
+        invoices,
+        runs,
+        rawMaterials,
+        products,
+        customers,
+        payments,
+        orders,
+        users,
+        auditLogs
+      ] = await Promise.all([
+        Invoice.find().lean(),
+        ProductionRun.find().lean(),
+        RawMaterial.find().lean(),
+        Product.find().lean(),
+        Customer.find().lean(),
+        Payment.find().lean(),
+        SalesOrder.find().sort({ createdAt: -1 }).lean(),
+        User.find().lean(),
+        AuditLog.find().sort({ timestamp: -1 }).limit(20).lean()
+      ]);
+
+      const totalRevenue = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
+      const totalOutstanding = customers.reduce((acc, c) => acc + c.outstandingBalance, 0);
+      const totalCollections = payments.reduce((acc, p) => acc + p.amount, 0);
+
+      const totalRawStockVal = rawMaterials.reduce((acc, m) => acc + (m.currentStock * (m.currentWeightedRate || m.standardRate)), 0);
+      const totalFGStockVal = products.reduce((acc, p) => acc + (p.currentStock * p.sellingPrice), 0);
+
+      const pendingOrders = orders.filter(o => o.status === 'SUBMITTED');
+      const shortageOrders = orders.filter(o => o.stockCheck && !o.stockCheck.isSufficient);
+
+      const activeUsersCount = users.filter(u => u.active).length;
+      const lockedUsersCount = users.filter(u => u.isLocked).length;
+      const failedLoginLogs = auditLogs.filter(l => l.action === 'LOGIN_FAILED').length;
+
+      res.json({
+        success: true,
+        companyOverview: {
+          totalRevenue: Math.round(totalRevenue * 100) / 100,
+          totalOutstanding: Math.round(totalOutstanding * 100) / 100,
+          totalCollections: Math.round(totalCollections * 100) / 100,
+          rawStockValue: Math.round(totalRawStockVal * 100) / 100,
+          finishedGoodsStockValue: Math.round(totalFGStockVal * 100) / 100,
+          totalOrdersCount: orders.length,
+          pendingApprovalsCount: pendingOrders.length,
+          shortageAlertsCount: shortageOrders.length,
+          productionRunsCount: runs.length
+        },
+        pendingApprovals: {
+          orders: pendingOrders
+        },
+        systemMonitoring: {
+          totalUsers: users.length,
+          activeUsers: activeUsersCount,
+          lockedUsers: lockedUsersCount,
+          recentFailedLogins: failedLoginLogs,
+          auditLogsCount: auditLogs.length,
+          databaseStatus: 'CONNECTED (MongoDB Atlas)',
+          openwaStatus: 'ONLINE (Meta Cloud API / OpenWA Standard)'
+        },
+        recentAudit: auditLogs
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

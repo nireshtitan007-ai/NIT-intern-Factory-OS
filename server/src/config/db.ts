@@ -6,6 +6,9 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 let mongodInstance: MongoMemoryServer | null = null;
 
 export const connectDB = async (customUri?: string): Promise<string> => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection.host;
+  }
   let uri = customUri || process.env.MONGODB_URI;
 
   if (!uri) {

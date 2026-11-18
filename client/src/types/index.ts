@@ -1,4 +1,31 @@
-export type UserRole = 'salesman' | 'admin' | 'production' | 'accountant' | 'owner' | 'whatsapp';
+export type UserRole = 
+  | 'salesman' 
+  | 'sales_manager'
+  | 'admin' 
+  | 'production' 
+  | 'inventory'
+  | 'purchase'
+  | 'accountant' 
+  | 'auditor' 
+  | 'owner' 
+  | 'whatsapp';
+
+export interface AppUser {
+  _id?: string;
+  id?: string;
+  username: string;
+  name: string;
+  role: UserRole;
+  department: string;
+  branch: string;
+  phone?: string;
+  permissions?: string[];
+  active?: boolean;
+  lastLoginAt?: string;
+  loginCount?: number;
+  isLocked?: boolean;
+  createdAt?: string;
+}
 
 export interface Customer {
   _id: string;

@@ -12,6 +12,7 @@ import {
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
+import { RealtimeService } from './realtime.service';
 
 export interface CreateOrderParams {
   customerId: string;
@@ -115,6 +116,39 @@ export class SalesOrderService {
       }
     });
 
+    RealtimeService.broadcast('ORDER_CREATED', order);
+    return order;
+  }
+
+  /**
+   * Rejects a sales order with an audit reason.
+   */
+  static async rejectOrder(orderId: string, reason: string = 'Administrative decision', rejectedBy: string = 'Admin'): Promise<ISalesOrder> {
+    const order = await SalesOrder.findById(orderId);
+    if (!order) throw new Error(`Sales order ${orderId} not found`);
+
+    if (order.status !== 'SUBMITTED') {
+      throw new Error(`Order ${order.orderNumber} is already ${order.status}`);
+    }
+
+    order.status = 'REJECTED';
+    order.notes = (order.notes ? order.notes + ' | ' : '') + `Rejected: ${reason}`;
+    await order.save();
+
+    await AuditLog.create({
+      action: 'SALES_ORDER_REJECTED',
+      entityType: 'SalesOrder',
+      entityId: order._id.toString(),
+      performedBy: rejectedBy,
+      role: 'admin',
+      details: {
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        reason
+      }
+    });
+
+    RealtimeService.broadcast('ORDER_REJECTED', { orderId, reason });
     return order;
   }
 
@@ -253,6 +287,7 @@ export class SalesOrderService {
       console.warn('[WhatsApp] Failed to dispatch order/invoice notification:', e);
     }
 
+    RealtimeService.broadcast('ORDER_APPROVED', { order, invoice });
     return { order, invoice };
   }
 
@@ -320,6 +355,7 @@ export class SalesOrderService {
       console.warn('[WhatsApp] Failed to dispatch shipment alert:', e);
     }
 
+    RealtimeService.broadcast('ORDER_DISPATCHED', { invoice });
     return invoice;
   }
 
@@ -398,6 +434,7 @@ export class SalesOrderService {
       console.warn('[WhatsApp] Failed to dispatch payment receipt:', e);
     }
 
+    RealtimeService.broadcast('PAYMENT_RECORDED', { payment, invoice, customer });
     return { payment, invoice, customer };
   }
 }

@@ -60,3 +60,4 @@ const NotificationSchema = new Schema<INotification>({
 });
 
 export const Notification = model<INotification>('Notification', NotificationSchema);
+

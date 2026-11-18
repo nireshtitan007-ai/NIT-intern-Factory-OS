@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { connectDB, disconnectDB } from '../config/db';
 import { 
   User, 
@@ -33,14 +34,102 @@ export async function seedBenchmarkData() {
     AuditLog.deleteMany({})
   ]);
 
-  console.log('[Seed] Inserting Users...');
+  console.log('[Seed] Inserting Users with secure credentials & roles...');
+  const salt = await bcrypt.genSalt(10);
+  const defaultPass = await bcrypt.hash('Nash@123', salt);
+  const adminPass = await bcrypt.hash('Admin@123', salt);
+
   const users = await User.insertMany([
-    { username: 'salesman_a', name: 'Salesman A (Tamil Nadu)', role: 'salesman' },
-    { username: 'salesman_b', name: 'Salesman B (Karnataka)', role: 'salesman' },
-    { username: 'factory_admin', name: 'Factory Admin Desk', role: 'admin' },
-    { username: 'supervisor', name: 'Production Supervisor', role: 'production' },
-    { username: 'accountant', name: 'Auditor & Accountant', role: 'accountant' },
-    { username: 'owner', name: 'Factory Business Owner', role: 'owner' }
+    { 
+      username: 'factory_admin', 
+      passwordHash: adminPass, 
+      name: 'Factory Admin Desk', 
+      role: 'admin', 
+      department: 'Executive Management', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['*']
+    },
+    { 
+      username: 'salesman_a', 
+      passwordHash: defaultPass, 
+      name: 'Salesman A (Tamil Nadu)', 
+      role: 'salesman', 
+      department: 'Sales', 
+      branch: 'Tamil Nadu Field',
+      permissions: ['orders:create', 'orders:view', 'payments:collect', 'customers:view']
+    },
+    { 
+      username: 'salesman_b', 
+      passwordHash: defaultPass, 
+      name: 'Salesman B (Karnataka)', 
+      role: 'salesman', 
+      department: 'Sales', 
+      branch: 'Karnataka Field',
+      permissions: ['orders:create', 'orders:view', 'payments:collect', 'customers:view']
+    },
+    { 
+      username: 'sales_mgr', 
+      passwordHash: defaultPass, 
+      name: 'Sales Manager', 
+      role: 'sales_manager', 
+      department: 'Sales & Distribution', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['orders:view', 'orders:create', 'orders:approve', 'customers:manage']
+    },
+    { 
+      username: 'supervisor', 
+      passwordHash: defaultPass, 
+      name: 'Production Supervisor', 
+      role: 'production', 
+      department: 'Manufacturing & Floor', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['production:run', 'production:view', 'bom:view', 'waste:record']
+    },
+    { 
+      username: 'inventory_mgr', 
+      passwordHash: defaultPass, 
+      name: 'Inventory Manager', 
+      role: 'inventory', 
+      department: 'Warehouse & Stores', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['inventory:view', 'stock:movement', 'stock:receipt']
+    },
+    { 
+      username: 'purchase_mgr', 
+      passwordHash: defaultPass, 
+      name: 'Purchase Manager', 
+      role: 'purchase', 
+      department: 'Procurement', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['purchases:view', 'purchases:create', 'suppliers:manage']
+    },
+    { 
+      username: 'accountant', 
+      passwordHash: defaultPass, 
+      name: 'Senior Accountant', 
+      role: 'accountant', 
+      department: 'Finance & Accounts', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['invoices:view', 'payments:record', 'gst:view', 'reports:finance']
+    },
+    { 
+      username: 'auditor', 
+      passwordHash: defaultPass, 
+      name: 'Statutory Auditor', 
+      role: 'auditor', 
+      department: 'Internal & External Audit', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['audit:view', 'reports:export', 'ledger:view', 'readonly:*']
+    },
+    { 
+      username: 'owner', 
+      passwordHash: adminPass, 
+      name: 'Factory Business Owner', 
+      role: 'owner', 
+      department: 'Board & Executive', 
+      branch: 'Main Plant - Tiruchirappalli',
+      permissions: ['*']
+    }
   ]);
 
   console.log('[Seed] Inserting Customers...');

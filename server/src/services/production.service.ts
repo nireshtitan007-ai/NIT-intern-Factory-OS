@@ -9,6 +9,7 @@ import {
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
+import { RealtimeService } from './realtime.service';
 
 export interface ExecuteProductionRunParams {
   productId: string;
@@ -271,6 +272,7 @@ export class ProductionService {
       console.warn('[WhatsApp] Failed to dispatch production alert:', e);
     }
 
+    RealtimeService.broadcast('PRODUCTION_COMPLETED', productionRun);
     return productionRun;
   }
 

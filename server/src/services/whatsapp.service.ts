@@ -198,3 +198,4 @@ export class WhatsAppService {
     return Notification.find().sort({ createdAt: -1 }).limit(100).lean();
   }
 }
+

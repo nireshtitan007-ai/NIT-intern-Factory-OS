@@ -243,3 +243,4 @@ export const WhatsAppCenterView: React.FC = () => {
     </div>
   );
 };
+
