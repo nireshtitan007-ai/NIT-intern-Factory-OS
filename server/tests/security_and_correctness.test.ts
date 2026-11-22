@@ -85,7 +85,8 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
       '/api/owner/overview',
       '/api/audit-logs',
       '/api/whatsapp/notifications',
-      '/api/whatsapp/status'
+      '/api/whatsapp/status',
+      '/api/realtime/events'
     ];
 
     test.each(unauthGetRoutes)('GET %s without Bearer token returns 401', async (route) => {
@@ -156,9 +157,24 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
         .set('Authorization', `Bearer ${auditorToken}`)
         .send({ supplierName: 'Test', items: [] });
       expect(resPurchase.status).toBe(403);
+
+      // Attempting to approve order as Auditor
+      const resApprove = await request(app)
+        .put('/api/orders/507f1f77bcf86cd799439011/approve')
+        .set('Authorization', `Bearer ${auditorToken}`)
+        .send({ approverName: 'Auditor' });
+      expect(resApprove.status).toBe(403);
+      expect(resApprove.body.error).toContain('Auditor role is strictly read-only');
+
+      // Attempting to update overheads as Auditor
+      const resCosts = await request(app)
+        .put('/api/production/runs/507f1f77bcf86cd799439011/costs')
+        .set('Authorization', `Bearer ${auditorToken}`)
+        .send({ laborCost: 100, overheadCost: 50 });
+      expect(resCosts.status).toBe(403);
     });
 
-    it('Salesman cannot access procurement, production, or admin control centre', async () => {
+    it('Salesman cannot access procurement, production, payments, reports, or admin control centre', async () => {
       // Salesman blocked from purchases
       const resPurchases = await request(app)
         .post('/api/purchases')
@@ -173,11 +189,84 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
         .send({ productId: 'fake_id', actualOutputPackets: 100 });
       expect(resProd.status).toBe(403);
 
+      // Salesman blocked from payments
+      const resPayment = await request(app)
+        .post('/api/payments')
+        .set('Authorization', `Bearer ${salesmanToken}`)
+        .send({ invoiceId: '507f1f77bcf86cd799439011', amount: 500 });
+      expect(resPayment.status).toBe(403);
+
+      // Salesman blocked from sales register report
+      const resReport = await request(app)
+        .get('/api/reports/sales-register')
+        .set('Authorization', `Bearer ${salesmanToken}`);
+      expect(resReport.status).toBe(403);
+
       // Salesman blocked from admin overview
       const resAdmin = await request(app)
         .get('/api/admin/overview')
         .set('Authorization', `Bearer ${salesmanToken}`);
       expect(resAdmin.status).toBe(403);
+    });
+
+    it('Salesman sees ONLY their own orders in GET /api/orders', async () => {
+      // Login as Salesman B
+      const salesmanBRes = await request(app)
+        .post('/api/auth/salesman-mobile-login')
+        .send({ username: 'salesman_b', password: 'Nash@123', routeTerritory: 'Karnataka Field' });
+      expect(salesmanBRes.status).toBe(200);
+      const salesmanBToken = salesmanBRes.body.token;
+
+      const customer = await Customer.findOne({ code: 'RET-A' });
+
+      // Salesman A creates an order
+      const orderARes = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${salesmanToken}`)
+        .send({
+          customerId: customer!._id.toString(),
+          items: [{ productCode: 'MUR-200G', quantity: 10 }]
+        });
+      expect(orderARes.status).toBe(201);
+      const orderAId = orderARes.body.order._id;
+
+      // Salesman B creates an order
+      const orderBRes = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${salesmanBToken}`)
+        .send({
+          customerId: customer!._id.toString(),
+          items: [{ productCode: 'MUR-200G', quantity: 20 }]
+        });
+      expect(orderBRes.status).toBe(201);
+      const orderBId = orderBRes.body.order._id;
+
+      // Salesman A fetches orders: must see Order A, but NOT Order B
+      const listARes = await request(app)
+        .get('/api/orders')
+        .set('Authorization', `Bearer ${salesmanToken}`);
+      expect(listARes.status).toBe(200);
+      const orderIdsA = listARes.body.orders.map((o: any) => o._id);
+      expect(orderIdsA).toContain(orderAId);
+      expect(orderIdsA).not.toContain(orderBId);
+
+      // Salesman B fetches orders: must see Order B, but NOT Order A
+      const listBRes = await request(app)
+        .get('/api/orders')
+        .set('Authorization', `Bearer ${salesmanBToken}`);
+      expect(listBRes.status).toBe(200);
+      const orderIdsB = listBRes.body.orders.map((o: any) => o._id);
+      expect(orderIdsB).toContain(orderBId);
+      expect(orderIdsB).not.toContain(orderAId);
+
+      // Admin fetches orders: sees both orders
+      const listAdminRes = await request(app)
+        .get('/api/orders')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(listAdminRes.status).toBe(200);
+      const allOrderIds = listAdminRes.body.orders.map((o: any) => o._id);
+      expect(allOrderIds).toContain(orderAId);
+      expect(allOrderIds).toContain(orderBId);
     });
 
     it('Production supervisor cannot create sales orders', async () => {

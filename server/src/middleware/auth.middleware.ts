@@ -1,12 +1,15 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User, IUser, UserRole } from '../models/User';
 
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET environment variable is required in production mode.');
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is required at startup.');
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'zenlyft_dev_secret_key_change_in_production_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface AuthenticatedRequest extends Request {
   user?: IUser;
@@ -237,10 +240,10 @@ export const requirePermission = (permission: string) => {
 };
 
 export const requireNonProduction = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_BENCHMARK_SEED !== 'true') {
+  if (process.env.NODE_ENV === 'production') {
     res.status(403).json({
       success: false,
-      error: 'Benchmark resetting and seeding is disabled in production environment.'
+      error: 'Benchmark seeding and execution is disabled in production environment.'
     });
     return;
   }

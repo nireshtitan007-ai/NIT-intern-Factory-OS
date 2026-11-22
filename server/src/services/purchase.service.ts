@@ -14,6 +14,7 @@ export interface CreatePurchaseParams {
   notes?: string;
   date?: Date;
   createdBy?: string;
+  userRole?: string;
 }
 
 export class PurchaseService {
@@ -112,8 +113,8 @@ export class PurchaseService {
       action: 'PURCHASE_RECORDED',
       entityType: 'Purchase',
       entityId: purchase._id.toString(),
-      performedBy: params.createdBy || 'PURCHASE_MANAGER',
-      role: 'purchase',
+      performedBy: params.createdBy || 'Purchase Manager',
+      role: params.userRole || 'purchase',
       details: {
         purchaseNumber,
         supplierName: params.supplierName,

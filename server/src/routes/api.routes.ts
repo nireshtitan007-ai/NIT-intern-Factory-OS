@@ -51,49 +51,46 @@ router.get('/realtime/events', authenticate, (req, res) => RealtimeService.subsc
 router.post('/benchmark/seed', authenticate, requireAdmin, requireNonProduction, ApiController.seedBenchmark);
 router.post('/benchmark/run', authenticate, requireAdmin, requireNonProduction, ApiController.runBenchmark);
 
-// --- Legacy / Internal Users Listing ---
-router.get('/users', authenticate, requireRoles('admin', 'owner', 'auditor'), ApiController.getUsers);
-
 // --- Master Data (Shared across operational modules) ---
-router.get('/customers', authenticate, requirePermission('customers:read'), ApiController.getCustomers);
-router.get('/products', authenticate, requirePermission('products:read'), ApiController.getProducts);
-router.get('/raw-materials', authenticate, requirePermission('raw_materials:read'), ApiController.getRawMaterials);
-router.get('/boms', authenticate, requirePermission('boms:read'), ApiController.getBOMs);
+router.get('/customers', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'accountant', 'auditor'), ApiController.getCustomers);
+router.get('/products', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'production', 'accountant', 'auditor', 'purchase', 'inventory'), ApiController.getProducts);
+router.get('/raw-materials', authenticate, requireRoles('admin', 'owner', 'production', 'purchase', 'inventory', 'accountant', 'auditor'), ApiController.getRawMaterials);
+router.get('/boms', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'accountant', 'auditor'), ApiController.getBOMs);
 
 // --- Authoritative Central Inventory ---
-router.get('/inventory/stock-summary', authenticate, requirePermission('inventory:read'), ApiController.getStockSummary);
-router.get('/inventory/ledger', authenticate, requirePermission('inventory:read'), ApiController.getStockLedger);
+router.get('/inventory/stock-summary', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'purchase', 'accountant', 'auditor'), ApiController.getStockSummary);
+router.get('/inventory/ledger', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'purchase', 'accountant', 'auditor'), ApiController.getStockLedger);
 
 // --- Procurement & Purchases ---
-router.get('/purchases', authenticate, requirePermission('purchases:read'), ApiController.getPurchases);
-router.post('/purchases', authenticate, requirePermission('purchases:create'), validateBody(recordPurchaseSchema), ApiController.recordPurchase);
+router.get('/purchases', authenticate, requireRoles('admin', 'owner', 'production', 'purchase', 'inventory', 'accountant', 'auditor'), ApiController.getPurchases);
+router.post('/purchases', authenticate, requireRoles('admin', 'owner', 'production', 'purchase', 'inventory'), validateBody(recordPurchaseSchema), ApiController.recordPurchase);
 
 // --- Production & Manufacturing ---
-router.get('/production/runs', authenticate, requirePermission('production:read'), ApiController.getProductionRuns);
-router.post('/production/runs', authenticate, requirePermission('production:create'), validateBody(executeProductionRunSchema), ApiController.executeProductionRun);
-router.put('/production/runs/:id/costs', authenticate, requirePermission('production:costs'), validateBody(updateOverheadsSchema), ApiController.updateRunOverheads);
+router.get('/production/runs', authenticate, requireRoles('admin', 'owner', 'production', 'accountant', 'auditor'), ApiController.getProductionRuns);
+router.post('/production/runs', authenticate, requireRoles('admin', 'owner', 'production'), validateBody(executeProductionRunSchema), ApiController.executeProductionRun);
+router.put('/production/runs/:id/costs', authenticate, requireRoles('admin', 'owner', 'production', 'accountant'), validateBody(updateOverheadsSchema), ApiController.updateRunOverheads);
 
 // --- Sales Orders & Offline Sync ---
-router.get('/orders', authenticate, requirePermission('orders:read'), ApiController.getSalesOrders);
-router.post('/orders', authenticate, requirePermission('orders:create'), validateBody(createOrderSchema), ApiController.createSalesOrder);
-router.post('/orders/sync-batch', authenticate, requirePermission('orders:create'), validateBody(syncOfflineBatchSchema), ApiController.syncOfflineOrders);
-router.put('/orders/:id/approve', authenticate, requirePermission('orders:approve'), validateBody(approveOrderSchema), ApiController.approveOrder);
-router.put('/orders/:id/reject', authenticate, requirePermission('orders:approve'), validateBody(rejectOrderSchema), ApiController.rejectOrder);
-router.put('/orders/:id/dispatch', authenticate, requirePermission('orders:dispatch'), validateBody(dispatchOrderSchema), ApiController.dispatchOrder);
+router.get('/orders', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'accountant', 'auditor'), ApiController.getSalesOrders);
+router.post('/orders', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager'), validateBody(createOrderSchema), ApiController.createSalesOrder);
+router.post('/orders/sync-batch', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager'), validateBody(syncOfflineBatchSchema), ApiController.syncOfflineOrders);
+router.put('/orders/:id/approve', authenticate, requireRoles('admin', 'owner'), validateBody(approveOrderSchema), ApiController.approveOrder);
+router.put('/orders/:id/reject', authenticate, requireRoles('admin', 'owner'), validateBody(rejectOrderSchema), ApiController.rejectOrder);
+router.put('/orders/:id/dispatch', authenticate, requireRoles('admin', 'owner', 'inventory'), validateBody(dispatchOrderSchema), ApiController.dispatchOrder);
 
 // --- Invoicing & GST Tax Engine ---
-router.get('/invoices', authenticate, requirePermission('invoices:read'), ApiController.getInvoices);
-router.get('/invoices/:id/pdf', authenticate, requirePermission('invoices:pdf'), ApiController.getInvoicePDF);
+router.get('/invoices', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'salesman', 'sales_manager'), ApiController.getInvoices);
+router.get('/invoices/:id/pdf', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'salesman', 'sales_manager'), ApiController.getInvoicePDF);
 
 // --- Collections & Payments ---
-router.get('/payments', authenticate, requirePermission('payments:read'), ApiController.getPayments);
-router.post('/payments', authenticate, requirePermission('payments:create'), validateBody(recordPaymentSchema), ApiController.recordPayment);
+router.get('/payments', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getPayments);
+router.post('/payments', authenticate, requireRoles('admin', 'owner', 'accountant'), validateBody(recordPaymentSchema), ApiController.recordPayment);
 
 // --- Regulatory, Financial & Production Reports ---
-router.get('/reports/sales-register', authenticate, requirePermission('reports:read'), ApiController.getSalesRegister);
-router.get('/reports/gst-summary', authenticate, requirePermission('reports:read'), ApiController.getGSTSummary);
-router.get('/reports/production-report', authenticate, requirePermission('reports:read'), ApiController.getProductionReport);
-router.get('/reports/outstanding', authenticate, requirePermission('reports:read'), ApiController.getOutstanding);
+router.get('/reports/sales-register', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getSalesRegister);
+router.get('/reports/gst-summary', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getGSTSummary);
+router.get('/reports/production-report', authenticate, requireRoles('admin', 'owner', 'production', 'accountant', 'auditor'), ApiController.getProductionReport);
+router.get('/reports/outstanding', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getOutstanding);
 
 // --- Admin Control Centre, Owner Dashboard & Immutable Audit Trail ---
 router.get('/admin/overview', authenticate, requireAdmin, ApiController.getAdminOverview);

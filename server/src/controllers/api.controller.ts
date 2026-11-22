@@ -52,17 +52,6 @@ export class ApiController {
     }
   }
 
-  // --- Users & Roles ---
-  static async getUsers(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      const users = await User.find({ tenantId }).lean();
-      res.json({ success: true, users });
-    } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  }
-
   // --- Masters: Customers, Products, Raw Materials, BOMs ---
   static async getCustomers(req: Request, res: Response) {
     try {
@@ -150,10 +139,12 @@ export class ApiController {
   static async recordPurchase(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
+      const user = (req as AuthenticatedRequest).user;
       const purchase = await PurchaseService.recordPurchase({
         ...req.body,
         tenantId,
-        createdBy: (req as AuthenticatedRequest).user?.name || req.body.createdBy
+        createdBy: user?.name || user?.username || req.body.createdBy,
+        userRole: user?.role
       });
       res.status(201).json({ success: true, purchase });
     } catch (err: any) {
@@ -175,10 +166,12 @@ export class ApiController {
   static async executeProductionRun(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
+      const user = (req as AuthenticatedRequest).user;
       const run = await ProductionService.executeRun({
         ...req.body,
         tenantId,
-        supervisorName: (req as AuthenticatedRequest).user?.name || req.body.supervisorName
+        supervisorName: user?.name || user?.username || req.body.supervisorName,
+        userRole: user?.role
       });
       res.status(201).json({ success: true, run });
     } catch (err: any) {
@@ -188,8 +181,15 @@ export class ApiController {
 
   static async updateRunOverheads(req: Request, res: Response) {
     try {
+      const user = (req as AuthenticatedRequest).user;
       const { laborCost, overheadCost } = req.body;
-      const run = await ProductionService.updateOverheads(req.params.id, Number(laborCost), Number(overheadCost));
+      const run = await ProductionService.updateOverheads(
+        req.params.id, 
+        Number(laborCost), 
+        Number(overheadCost),
+        user?.name || user?.username || 'Factory Admin',
+        user?.role || 'admin'
+      );
       res.json({ success: true, run });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -200,7 +200,12 @@ export class ApiController {
   static async getSalesOrders(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const orders = await SalesOrder.find({ tenantId }).sort({ createdAt: -1 }).lean();
+      const user = (req as AuthenticatedRequest).user;
+      const query: any = { tenantId };
+      if (user && (user.role === 'salesman' || user.role === 'sales_manager')) {
+        query.salesmanId = user._id.toString();
+      }
+      const orders = await SalesOrder.find(query).sort({ createdAt: -1 }).lean();
       res.json({ success: true, orders });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -211,11 +216,16 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const user = (req as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({ success: false, error: 'Authentication required' });
+        return;
+      }
       const order = await SalesOrderService.createOrder({
         ...req.body,
         tenantId,
-        salesmanId: user ? user._id.toString() : req.body.salesmanId,
-        salesmanName: user ? user.name : (req.body.salesmanName || 'Field Salesman')
+        salesmanId: user._id.toString(),
+        salesmanName: user.name,
+        userRole: user.role
       });
       res.status(201).json({ success: true, order });
     } catch (err: any) {
@@ -226,13 +236,21 @@ export class ApiController {
   static async syncOfflineOrders(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
+      const user = (req as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({ success: false, error: 'Authentication required' });
+        return;
+      }
       const { orders } = req.body; // array of offline orders
       if (!Array.isArray(orders)) throw new Error('Orders must be an array');
       const synced: any[] = [];
       for (const orderData of orders) {
         const order = await SalesOrderService.createOrder({
           ...orderData,
-          tenantId
+          tenantId,
+          salesmanId: user._id.toString(),
+          salesmanName: user.name,
+          userRole: user.role
         });
         synced.push(order);
       }
@@ -244,8 +262,9 @@ export class ApiController {
 
   static async approveOrder(req: Request, res: Response) {
     try {
-      const approverName = (req as AuthenticatedRequest).user?.name || req.body.approverName || 'Factory Admin';
-      const result = await SalesOrderService.approveOrder(req.params.id, approverName);
+      const user = (req as AuthenticatedRequest).user;
+      const approverName = user?.name || user?.username || req.body.approverName || 'Factory Admin';
+      const result = await SalesOrderService.approveOrder(req.params.id, approverName, user?.role || 'admin');
       res.json({ success: true, ...result });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -254,9 +273,10 @@ export class ApiController {
 
   static async rejectOrder(req: Request, res: Response) {
     try {
-      const rejectedBy = (req as AuthenticatedRequest).user?.name || req.body.rejectedBy || 'Factory Admin';
+      const user = (req as AuthenticatedRequest).user;
+      const rejectedBy = user?.name || user?.username || req.body.rejectedBy || 'Factory Admin';
       const { reason } = req.body;
-      const order = await SalesOrderService.rejectOrder(req.params.id, reason, rejectedBy);
+      const order = await SalesOrderService.rejectOrder(req.params.id, reason, rejectedBy, user?.role || 'admin');
       res.json({ success: true, order });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -265,8 +285,9 @@ export class ApiController {
 
   static async dispatchOrder(req: Request, res: Response) {
     try {
-      const dispatcherName = (req as AuthenticatedRequest).user?.name || req.body.dispatcherName || 'Factory Admin';
-      const invoice = await SalesOrderService.dispatchOrder(req.params.id, dispatcherName);
+      const user = (req as AuthenticatedRequest).user;
+      const dispatcherName = user?.name || user?.username || req.body.dispatcherName || 'Factory Admin';
+      const invoice = await SalesOrderService.dispatchOrder(req.params.id, dispatcherName, user?.role || 'admin');
       res.json({ success: true, invoice });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -312,10 +333,12 @@ export class ApiController {
 
   static async recordPayment(req: Request, res: Response) {
     try {
-      const receivedBy = (req as AuthenticatedRequest).user?.name || req.body.receivedBy || 'Senior Accountant';
+      const user = (req as AuthenticatedRequest).user;
+      const receivedBy = user?.name || user?.username || req.body.receivedBy || 'Senior Accountant';
       const result = await SalesOrderService.recordPayment({
         ...req.body,
-        receivedBy
+        receivedBy,
+        userRole: user?.role
       });
       res.status(201).json({ success: true, ...result });
     } catch (err: any) {

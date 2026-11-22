@@ -26,6 +26,7 @@ export interface ExecuteProductionRunParams {
   directLaborCost?: number; // e.g. 1200
   directOverheadCost?: number; // e.g. 600
   supervisorName?: string;
+  userRole?: string;
   notes?: string;
 }
 
@@ -293,8 +294,8 @@ export class ProductionService {
       action: 'PRODUCTION_RUN_COMPLETED',
       entityType: 'ProductionRun',
       entityId: productionRun._id.toString(),
-      performedBy: params.supervisorName || 'SUPERVISOR',
-      role: 'production',
+      performedBy: params.supervisorName || 'Floor Supervisor',
+      role: params.userRole || 'production',
       details: {
         runNumber,
         outputPackets: actualOutputPackets,
@@ -319,7 +320,13 @@ export class ProductionService {
   /**
    * Update or add overhead costs (labor, power/gas) to an existing production run
    */
-  static async updateOverheads(runId: string, laborCost: number, overheadCost: number) {
+  static async updateOverheads(
+    runId: string, 
+    laborCost: number, 
+    overheadCost: number,
+    updatedBy: string = 'Factory Admin',
+    userRole: string = 'admin'
+  ) {
     const run = await ProductionRun.findById(runId);
     if (!run) throw new Error(`Production run ${runId} not found`);
 
@@ -348,8 +355,8 @@ export class ProductionService {
       action: 'OVERHEADS_UPDATED',
       entityType: 'ProductionRun',
       entityId: run._id.toString(),
-      performedBy: 'ADMIN',
-      role: 'admin',
+      performedBy: updatedBy,
+      role: userRole,
       details: {
         laborCost,
         overheadCost,

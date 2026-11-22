@@ -25,6 +25,7 @@ export interface CreateOrderParams {
   customerId: string;
   salesmanName?: string;
   salesmanId?: string;
+  userRole?: string;
   items: Array<{
     productCode: string;
     quantity: number;
@@ -128,7 +129,7 @@ export class SalesOrderService {
       entityType: 'SalesOrder',
       entityId: order._id.toString(),
       performedBy: params.salesmanName || 'Field Salesman',
-      role: 'salesman',
+      role: params.userRole || 'salesman',
       details: {
         orderNumber,
         customerName: customer.name,
@@ -146,7 +147,12 @@ export class SalesOrderService {
   /**
    * Rejects a sales order with an audit reason.
    */
-  static async rejectOrder(orderId: string, reason: string = 'Administrative decision', rejectedBy: string = 'Admin'): Promise<ISalesOrder> {
+  static async rejectOrder(
+    orderId: string, 
+    reason: string = 'Administrative decision', 
+    rejectedBy: string = 'Admin',
+    rejecterRole: string = 'admin'
+  ): Promise<ISalesOrder> {
     const order = await SalesOrder.findById(orderId);
     if (!order) throw new Error(`Sales order ${orderId} not found`);
 
@@ -164,7 +170,7 @@ export class SalesOrderService {
       entityType: 'SalesOrder',
       entityId: order._id.toString(),
       performedBy: rejectedBy,
-      role: 'admin',
+      role: rejecterRole,
       details: {
         orderNumber: order.orderNumber,
         customerName: order.customerName,
@@ -179,7 +185,11 @@ export class SalesOrderService {
   /**
    * Approves a sales order and generates a GST-compliant tax invoice using integer paise math.
    */
-  static async approveOrder(orderId: string, approverName: string = 'Admin'): Promise<{ order: ISalesOrder; invoice: IInvoice }> {
+  static async approveOrder(
+    orderId: string, 
+    approverName: string = 'Admin',
+    approverRole: string = 'admin'
+  ): Promise<{ order: ISalesOrder; invoice: IInvoice }> {
     const order = await SalesOrder.findById(orderId);
     if (!order) throw new Error(`Sales order ${orderId} not found`);
 
@@ -302,7 +312,7 @@ export class SalesOrderService {
       entityType: 'Invoice',
       entityId: invoice._id.toString(),
       performedBy: approverName,
-      role: 'admin',
+      role: approverRole,
       details: {
         orderNumber: order.orderNumber,
         invoiceNumber,
@@ -331,7 +341,11 @@ export class SalesOrderService {
    * Dispatches an invoiced order:
    * Deducts finished goods stock via StockMovement (SALES_DISPATCH)
    */
-  static async dispatchOrder(invoiceId: string, dispatcherName: string = 'Admin'): Promise<IInvoice> {
+  static async dispatchOrder(
+    invoiceId: string, 
+    dispatcherName: string = 'Admin',
+    dispatcherRole: string = 'admin'
+  ): Promise<IInvoice> {
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) throw new Error(`Invoice ${invoiceId} not found`);
 
@@ -380,7 +394,7 @@ export class SalesOrderService {
       entityType: 'Invoice',
       entityId: invoice._id.toString(),
       performedBy: dispatcherName,
-      role: 'admin',
+      role: dispatcherRole,
       details: {
         invoiceNumber: invoice.invoiceNumber,
         customerName: invoice.customerName,
@@ -409,6 +423,7 @@ export class SalesOrderService {
     reference?: string;
     notes?: string;
     receivedBy?: string;
+    userRole?: string;
   }): Promise<{ payment: IPayment; invoice: IInvoice; customer: any }> {
     const invoice = await Invoice.findById(params.invoiceId);
     if (!invoice) throw new Error(`Invoice ${params.invoiceId} not found`);
@@ -471,8 +486,8 @@ export class SalesOrderService {
       action: 'PAYMENT_RECORDED',
       entityType: 'Payment',
       entityId: payment._id.toString(),
-      performedBy: params.receivedBy || 'ACCOUNTANT',
-      role: 'accountant',
+      performedBy: params.receivedBy || 'Senior Accountant',
+      role: params.userRole || 'accountant',
       details: {
         paymentNumber,
         invoiceNumber: invoice.invoiceNumber,
