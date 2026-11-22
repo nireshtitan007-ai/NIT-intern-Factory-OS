@@ -54,6 +54,7 @@ export async function executeBenchmarkScenario() {
   console.log(`✓ Production Run ${run.runNumber} recorded.`);
   console.log(`  Actual Output: ${run.actualOutputPackets} packets (Expected: 200 packets)`);
   console.log(`  Yield: ${run.yieldPercent}% | Yield Variance: ${run.yieldVariancePercent}% (Flagged: ${run.yieldVarianceFlagged})`);
+  console.log(`  Initial Direct Materials Cost: ₹${run.totalMaterialCost.toFixed(2)} | Cost/Packet (Materials only): ₹${run.costPerPacket.toFixed(2)}`);
   
   const oilIssue = run.materialsIssued.find(m => m.materialCode === 'COOKING-OIL');
   console.log(`  Oil Consumption: ${oilIssue?.actualQtyIssued} L vs 10 L standard (+${oilIssue?.variancePercent}%, Flagged: ${oilIssue?.varianceFlagged})\n`);

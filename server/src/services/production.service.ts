@@ -5,6 +5,7 @@ import {
   RawMaterial,
   ProductionRun,
   IProductionRun,
+  StockMovement,
   AuditLog,
   getNextSequence
 } from '../models';
@@ -95,6 +96,7 @@ export class ProductionService {
       unitCostPaise: number;
       lineCostPaise: number;
       lineCost: number;
+      consumptionBasis?: string;
     }
 
     const plannedIssues: PlannedMaterialIssue[] = [];
@@ -127,8 +129,8 @@ export class ProductionService {
       const varianceFlagged = Math.abs(variancePercent) > tolerance;
 
       const unitCost = rawMaterial.currentWeightedRate || rawMaterial.standardRate;
-      const unitCostPaise = rawMaterial.currentWeightedRatePaise || rupeesToPaise(unitCost);
-      const lineCostPaise = Math.round(actualQty * unitCostPaise);
+      const unitCostPaise = rupeesToPaise(unitCost);
+      const lineCostPaise = Math.round(actualQty * unitCost * 100);
       const lineCost = paiseToRupees(lineCostPaise);
       totalMaterialCostPaise += lineCostPaise;
 
@@ -143,7 +145,8 @@ export class ProductionService {
         unitCost,
         unitCostPaise,
         lineCostPaise,
-        lineCost
+        lineCost,
+        consumptionBasis: 'PER_BATCH'
       });
     }
 
@@ -211,8 +214,8 @@ export class ProductionService {
       const varianceFlagged = Math.abs(variancePercent) > tolerance;
 
       const unitCost = rawMaterial.currentWeightedRate || rawMaterial.standardRate;
-      const unitCostPaise = rawMaterial.currentWeightedRatePaise || rupeesToPaise(unitCost);
-      const lineCostPaise = Math.round(actualQty * unitCostPaise);
+      const unitCostPaise = rupeesToPaise(unitCost);
+      const lineCostPaise = Math.round(actualQty * unitCost * 100);
       const lineCost = paiseToRupees(lineCostPaise);
       totalMaterialCostPaise += lineCostPaise;
 
@@ -227,31 +230,21 @@ export class ProductionService {
         unitCost,
         unitCostPaise,
         lineCostPaise,
-        lineCost
+        lineCost,
+        consumptionBasis: basis
       });
     }
 
-    // PRE-VALIDATE: Verify stock for ALL materials BEFORE writing any movement
-    for (const issue of plannedIssues) {
-      const current = await RawMaterial.findById(issue.rawMaterial._id).lean();
-      const available = current ? current.currentStock : 0;
-      if (available < issue.actualQty - 0.0001) {
-        throw new Error(
-          `INSUFFICIENT_STOCK: Material ${issue.rawMaterial.name} (${issue.rawMaterial.code}) is short. Required: ${issue.actualQty} ${issue.rawMaterial.unit}, Available: ${available} ${issue.rawMaterial.unit}. Production run rejected.`
-        );
-      }
-    }
-
     // Production Overhead and Labor Cost Calculations
-    // Default: labor ₹1,200 (120,000 paise), overheads ₹600 (60,000 paise) matching Section 5 benchmark
+    // Default both to 0: labour and overhead are entered afterwards through updateOverheads
     const directLaborCostPaise = params.directLaborCostPaise !== undefined
       ? params.directLaborCostPaise
-      : (params.directLaborCost !== undefined ? rupeesToPaise(params.directLaborCost) : 120000);
+      : (params.directLaborCost !== undefined ? rupeesToPaise(params.directLaborCost) : 0);
     const directLaborCost = paiseToRupees(directLaborCostPaise);
 
     const directOverheadCostPaise = params.directOverheadCostPaise !== undefined
       ? params.directOverheadCostPaise
-      : (params.directOverheadCost !== undefined ? rupeesToPaise(params.directOverheadCost) : 60000);
+      : (params.directOverheadCost !== undefined ? rupeesToPaise(params.directOverheadCost) : 0);
     const directOverheadCost = paiseToRupees(directOverheadCostPaise);
 
     const totalProductionCostPaise = totalMaterialCostPaise + directLaborCostPaise + directOverheadCostPaise;
@@ -268,6 +261,18 @@ export class ProductionService {
     session.startTransaction();
 
     try {
+      // PRE-VALIDATE WITHIN TRANSACTION SESSION:
+      // Verify stock for ALL materials inside the ACID session before recording any movements
+      for (const issue of plannedIssues) {
+        const current = await RawMaterial.findById(issue.rawMaterial._id).session(session).lean();
+        const available = current ? current.currentStock : 0;
+        if (available < issue.actualQty - 0.0001) {
+          throw new Error(
+            `INSUFFICIENT_STOCK: Material ${issue.rawMaterial.name} (${issue.rawMaterial.code}) is short. Required: ${issue.actualQty} ${issue.rawMaterial.unit}, Available: ${available} ${issue.rawMaterial.unit}. Production run rejected.`
+          );
+        }
+      }
+
       // Monotonic Atomic Counter Sequence for Production Run
       const runSeq = await getNextSequence(tenantId, 'PRODUCTION_RUN', session);
       const runNumber = `PR-${new Date().getFullYear()}-${String(runSeq).padStart(3, '0')}`;
@@ -339,33 +344,34 @@ export class ProductionService {
         session
       });
 
-      // Record damaged pouches as scrap if any
+      // Record damaged packaging as scrap if any
       if (damagedPouches > 0) {
-        const pouchItem = plannedIssues.find(p => p.rawMaterial.code.includes('POUCH'));
-        if (pouchItem) {
+        // Record scrap against BOM packaging line whose consumptionBasis is PER_GOOD_PACKET_PLUS_SCRAP (no name matching)
+        const scrapPackagingItem = plannedIssues.find(p => p.consumptionBasis === 'PER_GOOD_PACKET_PLUS_SCRAP');
+        if (scrapPackagingItem) {
           await StockLedgerService.recordMovement({
             tenantId,
             itemType: 'PACKAGING',
-            itemId: pouchItem.rawMaterial._id,
-            itemCode: pouchItem.rawMaterial.code,
-            itemName: pouchItem.rawMaterial.name,
+            itemId: scrapPackagingItem.rawMaterial._id,
+            itemCode: scrapPackagingItem.rawMaterial.code,
+            itemName: scrapPackagingItem.rawMaterial.name,
             movementType: 'DAMAGED_SCRAP',
             quantity: 0, // already deducted in actualQty
-            unit: pouchItem.rawMaterial.unit,
-            unitCost: pouchItem.unitCost,
-            unitCostPaise: pouchItem.unitCostPaise,
+            unit: scrapPackagingItem.rawMaterial.unit,
+            unitCost: scrapPackagingItem.unitCost,
+            unitCostPaise: scrapPackagingItem.unitCostPaise,
             sourceDocType: 'PRODUCTION_RUN',
             sourceDocId: runNumber,
-            notes: `Scrap recorded: ${damagedPouches} damaged pouches on run ${runNumber}`,
+            notes: `Scrap recorded: ${damagedPouches} damaged units on run ${runNumber}`,
             createdBy: params.supervisorName || 'SUPERVISOR',
             session
           });
         }
       }
 
-      // Find cartons used
-      const cartonItem = plannedIssues.find(p => p.rawMaterial.code.includes('CARTON'));
-      const cartonsUsedFinal = cartonItem ? cartonItem.actualQty : (params.cartonsUsed || 0);
+      // Find cartons used via BOM packaging line whose consumptionBasis is PER_N_PACKETS (no name matching)
+      const cartonPackagingItem = plannedIssues.find(p => p.consumptionBasis === 'PER_N_PACKETS');
+      const cartonsUsedFinal = cartonPackagingItem ? cartonPackagingItem.actualQty : (params.cartonsUsed || 0);
 
       // Save Production Run
       const runDocs = await ProductionRun.create([{

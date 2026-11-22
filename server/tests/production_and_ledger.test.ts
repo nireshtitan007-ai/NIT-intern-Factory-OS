@@ -6,6 +6,7 @@ import { seedBenchmarkData } from '../src/scripts/seedBenchmark';
 import { ProductionService } from '../src/services/production.service';
 import { StockLedgerService } from '../src/services/stockLedger.service';
 import { SalesOrderService } from '../src/services/salesOrder.service';
+import { PurchaseService } from '../src/services/purchase.service';
 import { Product, RawMaterial, StockMovement, BOM, User } from '../src/models';
 import { generateToken } from '../src/middleware/auth.middleware';
 
@@ -238,6 +239,52 @@ describe('Step 2: BOM-Driven Production, Multi-SKU, Atomic Ledger & FEFO Accepta
       expect(updatedProduct!.currentStock).toBe(initialStock - 20);
       expect(ledgerTotal).toBe(initialStock - 20);
       expect(updatedProduct!.currentStock).toBe(ledgerTotal);
+    });
+  });
+
+  describe('8. Zero Overhead Defaults & Post-Run Cost Allocation', () => {
+    it('a run with no costs has costPerPacket = materials only (₹4,055 / 188 ≈ ₹21.57), and after updateOverheads(1200, 600) it is ₹31.14', async () => {
+      // Record purchase of 60 kg flour @ ₹45/kg (Benchmark Step 1) to establish WAC rate 43.125
+      await PurchaseService.recordPurchase({
+        supplierName: 'Sri Lakshmi Agro Mills',
+        items: [{ materialCode: 'FLOUR', quantity: 60, rate: 45 }],
+        notes: 'Benchmark Step 1 purchase for WAC calculation'
+      });
+
+      const prod = await Product.findOne({ code: 'MUR-200G' });
+      const initialRun = await ProductionService.executeRun({
+        productId: prod!._id.toString(),
+        batchExpectedOutput: 200,
+        materialIssues: [
+          { materialCode: 'FLOUR', actualQtyIssued: 40 },
+          { materialCode: 'COOKING-OIL', actualQtyIssued: 10.5 },
+          { materialCode: 'SPICE-MIX', actualQtyIssued: 1.2 }
+        ],
+        actualOutputPackets: 188,
+        damagedPouches: 6,
+        cartonsUsed: 9,
+        supervisorName: 'Test Supervisor'
+      });
+
+      // Default labor and overhead costs are strictly zero (no hidden defaults)
+      expect(initialRun.directLaborCost).toBe(0);
+      expect(initialRun.directOverheadCost).toBe(0);
+      expect(initialRun.directLaborCostPaise).toBe(0);
+      expect(initialRun.directOverheadCostPaise).toBe(0);
+
+      // Total material cost = ₹4,055 (1725 flour [WAC 43.125] + 1470 oil + 240 spice + 485 pouches + 135 cartons)
+      expect(initialRun.totalMaterialCost).toBe(4055);
+      expect(initialRun.totalProductionCost).toBe(4055);
+      // Cost per packet = Math.round(405500 / 188) / 100 = 2157 paise = ₹21.57
+      expect(initialRun.costPerPacket).toBe(21.57);
+
+      // Update overheads post-run: ₹1,200 labour, ₹600 power/gas
+      const updatedRun = await ProductionService.updateOverheads(initialRun._id.toString(), 1200, 600);
+      expect(updatedRun.directLaborCost).toBe(1200);
+      expect(updatedRun.directOverheadCost).toBe(600);
+      expect(updatedRun.totalProductionCost).toBe(5855); // 4055 + 1800
+      // Cost per packet = Math.round(585500 / 188) / 100 = 3114 paise = ₹31.14
+      expect(updatedRun.costPerPacket).toBe(31.14);
     });
   });
 });
