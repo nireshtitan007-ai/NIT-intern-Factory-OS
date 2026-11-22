@@ -1,23 +1,23 @@
 import { Types } from 'mongoose';
-import { 
-  SalesOrder, 
-  ISalesOrder, 
-  Customer, 
-  Product, 
-  Invoice, 
-  IInvoice, 
-  Payment, 
-  IPayment, 
-  AuditLog 
+import {
+  SalesOrder,
+  ISalesOrder,
+  Customer,
+  Product,
+  Invoice,
+  IInvoice,
+  Payment,
+  IPayment,
+  AuditLog
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
 import { RealtimeService } from './realtime.service';
-import { 
-  rupeesToPaise, 
-  paiseToRupees, 
-  calculateGSTPaise, 
-  validatePaymentPaise 
+import {
+  rupeesToPaise,
+  paiseToRupees,
+  calculateGSTPaise,
+  validatePaymentPaise
 } from '../utils/money';
 import { convert } from '../utils/units';
 
@@ -64,11 +64,11 @@ export class SalesOrderService {
     let isSufficient = true;
 
     for (const item of params.items) {
-      const product = await Product.findOne({ 
-        tenantId, 
-        code: item.productCode.toUpperCase() 
+      const product = await Product.findOne({
+        tenantId,
+        code: item.productCode.toUpperCase()
       }) || await Product.findOne({ code: item.productCode.toUpperCase() });
-      
+
       if (!product) throw new Error(`Product with code ${item.productCode} not found`);
 
       let quantityInPackets = item.quantity;
@@ -156,8 +156,8 @@ export class SalesOrderService {
    * Rejects a sales order with an audit reason.
    */
   static async rejectOrder(
-    orderId: string, 
-    reason: string = 'Administrative decision', 
+    orderId: string,
+    reason: string = 'Administrative decision',
     rejectedBy: string = 'Admin',
     rejecterRole: string = 'admin'
   ): Promise<ISalesOrder> {
@@ -194,7 +194,7 @@ export class SalesOrderService {
    * Approves a sales order and generates a GST-compliant tax invoice using integer paise math.
    */
   static async approveOrder(
-    orderId: string, 
+    orderId: string,
     approverName: string = 'Admin',
     approverRole: string = 'admin'
   ): Promise<{ order: ISalesOrder; invoice: IInvoice }> {
@@ -228,7 +228,7 @@ export class SalesOrderService {
       const hsnCode = product ? product.hsnCode : '19059040';
       const unitPricePaise = item.unitPricePaise || rupeesToPaise(item.unitPrice);
       const itemTaxablePaise = item.quantity * unitPricePaise;
-      
+
       const gstRate = 5; // standard food rate for Murukku 200g
       const gst = calculateGSTPaise(itemTaxablePaise, gstRate, isInterState);
 
@@ -350,7 +350,7 @@ export class SalesOrderService {
    * Deducts finished goods stock via StockMovement (SALES_DISPATCH)
    */
   static async dispatchOrder(
-    invoiceId: string, 
+    invoiceId: string,
     dispatcherName: string = 'Admin',
     dispatcherRole: string = 'admin'
   ): Promise<IInvoice> {

@@ -1,11 +1,11 @@
 import { Types } from 'mongoose';
-import { 
-  BOM, 
-  Product, 
-  RawMaterial, 
-  ProductionRun, 
-  IProductionRun, 
-  AuditLog 
+import {
+  BOM,
+  Product,
+  RawMaterial,
+  ProductionRun,
+  IProductionRun,
+  AuditLog
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
@@ -140,11 +140,11 @@ export class ProductionService {
     }
 
     // Process Packaging Materials (Pouches & Cartons)
-    const pouchMaterial = await RawMaterial.findOne({ 
+    const pouchMaterial = await RawMaterial.findOne({
       tenantId,
-      $or: [{ code: 'POUCH-200G' }, { name: { $regex: /pouch/i } }] 
-    }) || await RawMaterial.findOne({ 
-      $or: [{ code: 'POUCH-200G' }, { name: { $regex: /pouch/i } }] 
+      $or: [{ code: 'POUCH-200G' }, { name: { $regex: /pouch/i } }]
+    }) || await RawMaterial.findOne({
+      $or: [{ code: 'POUCH-200G' }, { name: { $regex: /pouch/i } }]
     });
 
     if (pouchMaterial) {
@@ -190,11 +190,11 @@ export class ProductionService {
       });
     }
 
-    const cartonMaterial = await RawMaterial.findOne({ 
+    const cartonMaterial = await RawMaterial.findOne({
       tenantId,
-      $or: [{ code: 'CARTON-20PKT' }, { name: { $regex: /carton/i } }] 
-    }) || await RawMaterial.findOne({ 
-      $or: [{ code: 'CARTON-20PKT' }, { name: { $regex: /carton/i } }] 
+      $or: [{ code: 'CARTON-20PKT' }, { name: { $regex: /carton/i } }]
+    }) || await RawMaterial.findOne({
+      $or: [{ code: 'CARTON-20PKT' }, { name: { $regex: /carton/i } }]
     });
 
     if (cartonMaterial && cartonsUsed > 0) {
@@ -260,12 +260,12 @@ export class ProductionService {
     const directLaborCostPaise = rupeesToPaise(directLaborCost);
     const directOverheadCost = params.directOverheadCost || 0;
     const directOverheadCostPaise = rupeesToPaise(directOverheadCost);
-    
+
     const totalProductionCostPaise = totalMaterialCostPaise + directLaborCostPaise + directOverheadCostPaise;
     const totalMaterialCost = paiseToRupees(totalMaterialCostPaise);
     const totalProductionCost = paiseToRupees(totalProductionCostPaise);
 
-    const costPerPacketPaise = actualOutputPackets > 0 
+    const costPerPacketPaise = actualOutputPackets > 0
       ? Math.round(totalProductionCostPaise / actualOutputPackets)
       : 0;
     const costPerPacket = paiseToRupees(costPerPacketPaise);
@@ -334,8 +334,8 @@ export class ProductionService {
    * Update or add overhead costs (labor, power/gas) to an existing production run
    */
   static async updateOverheads(
-    runId: string, 
-    laborCost: number, 
+    runId: string,
+    laborCost: number,
     overheadCost: number,
     updatedBy: string = 'Factory Admin',
     userRole: string = 'admin'
@@ -354,8 +354,8 @@ export class ProductionService {
     run.directOverheadCostPaise = overheadCostPaise;
     run.totalProductionCostPaise = totalProductionCostPaise;
     run.totalProductionCost = paiseToRupees(totalProductionCostPaise);
-    
-    const costPerPacketPaise = run.actualOutputPackets > 0 
+
+    const costPerPacketPaise = run.actualOutputPackets > 0
       ? Math.round(totalProductionCostPaise / run.actualOutputPackets)
       : 0;
     run.costPerPacketPaise = costPerPacketPaise;

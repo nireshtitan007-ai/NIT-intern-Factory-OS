@@ -3,15 +3,15 @@ import bcrypt from 'bcryptjs';
 import { createApp } from '../src/app';
 import { connectDB, disconnectDB } from '../src/config/db';
 import { seedBenchmarkData } from '../src/scripts/seedBenchmark';
-import { 
-  User, 
-  Customer, 
-  Product, 
-  RawMaterial, 
-  StockMovement, 
-  SalesOrder, 
-  Invoice, 
-  Payment 
+import {
+  User,
+  Customer,
+  Product,
+  RawMaterial,
+  StockMovement,
+  SalesOrder,
+  Invoice,
+  Payment
 } from '../src/models';
 import { StockLedgerService } from '../src/services/stockLedger.service';
 import { generateToken } from '../src/middleware/auth.middleware';
