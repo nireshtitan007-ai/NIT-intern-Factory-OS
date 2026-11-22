@@ -14,6 +14,7 @@ export interface IRawMaterial extends Document {
   standardRatePaise?: number;
   currentWeightedRate: number; // in INR
   currentWeightedRatePaise?: number;
+  totalValuePaise?: number;
   reorderLevel: number;
   createdAt: Date;
 }
@@ -34,6 +35,7 @@ const RawMaterialSchema = new Schema<IRawMaterial>({
   standardRatePaise: { type: Number, default: 0 },
   currentWeightedRate: { type: Number, required: true },
   currentWeightedRatePaise: { type: Number, default: 0 },
+  totalValuePaise: { type: Number, default: 0 },
   reorderLevel: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
@@ -46,6 +48,9 @@ RawMaterialSchema.pre('save', function (next) {
   }
   if (!this.currentWeightedRatePaise && this.currentWeightedRate) {
     this.currentWeightedRatePaise = Math.round(this.currentWeightedRate * 100);
+  }
+  if (!this.totalValuePaise && this.currentStock && this.currentWeightedRate) {
+    this.totalValuePaise = Math.round(this.currentStock * (this.currentWeightedRatePaise || Math.round(this.currentWeightedRate * 100)));
   }
   next();
 });

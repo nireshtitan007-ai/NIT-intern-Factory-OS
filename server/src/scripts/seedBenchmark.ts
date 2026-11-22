@@ -177,7 +177,10 @@ export async function seedBenchmarkData() {
       openingStock: 100,
       currentStock: 100,
       standardRate: 42,
+      standardRatePaise: 4200,
       currentWeightedRate: 42,
+      currentWeightedRatePaise: 4200,
+      totalValuePaise: 420000,
       reorderLevel: 50
     },
     {
@@ -188,7 +191,10 @@ export async function seedBenchmarkData() {
       openingStock: 30,
       currentStock: 30,
       standardRate: 140,
+      standardRatePaise: 14000,
       currentWeightedRate: 140,
+      currentWeightedRatePaise: 14000,
+      totalValuePaise: 420000,
       reorderLevel: 15
     },
     {
@@ -199,7 +205,10 @@ export async function seedBenchmarkData() {
       openingStock: 5,
       currentStock: 5,
       standardRate: 200,
+      standardRatePaise: 20000,
       currentWeightedRate: 200,
+      currentWeightedRatePaise: 20000,
+      totalValuePaise: 100000,
       reorderLevel: 2
     },
     {
@@ -210,7 +219,10 @@ export async function seedBenchmarkData() {
       openingStock: 500,
       currentStock: 500,
       standardRate: 2.50,
+      standardRatePaise: 250,
       currentWeightedRate: 2.50,
+      currentWeightedRatePaise: 250,
+      totalValuePaise: 125000,
       reorderLevel: 200
     },
     {
@@ -221,7 +233,10 @@ export async function seedBenchmarkData() {
       openingStock: 30,
       currentStock: 30,
       standardRate: 15,
+      standardRatePaise: 1500,
       currentWeightedRate: 15,
+      currentWeightedRatePaise: 1500,
+      totalValuePaise: 45000,
       reorderLevel: 10
     }
   ]);

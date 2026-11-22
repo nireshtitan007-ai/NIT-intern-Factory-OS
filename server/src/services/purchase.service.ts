@@ -1,7 +1,12 @@
 import { Types } from 'mongoose';
 import { Purchase, IPurchase, RawMaterial, AuditLog } from '../models';
 import { StockLedgerService } from './stockLedger.service';
-import { rupeesToPaise, paiseToRupees } from '../utils/money';
+import { 
+  rupeesToPaise, 
+  paiseToRupees, 
+  mulQtyRate, 
+  computeWAC 
+} from '../utils/money';
 
 export interface CreatePurchaseParams {
   tenantId?: string;
@@ -59,17 +64,16 @@ export class PurchaseService {
         totalPaise: lineTotalPaise
       });
 
-      // Update Weighted Average Cost
+      // Update Weighted Average Cost using exact integer paise precision
       const oldStock = material.currentStock > 0 ? material.currentStock : 0;
-      const oldRate = material.currentWeightedRate || material.standardRate;
-      const totalCostValue = (oldStock * oldRate) + (item.quantity * item.rate);
-      const newTotalStock = oldStock + item.quantity;
-      const newWeightedRate = newTotalStock > 0 
-        ? Math.round((totalCostValue / newTotalStock) * 1000) / 1000 
-        : item.rate;
+      const oldRatePaise = material.currentWeightedRatePaise || rupeesToPaise(material.currentWeightedRate || material.standardRate);
+      const oldValuePaise = material.totalValuePaise || Math.round(oldStock * oldRatePaise);
 
-      material.currentWeightedRate = newWeightedRate;
-      material.currentWeightedRatePaise = rupeesToPaise(newWeightedRate);
+      const wac = computeWAC(oldStock, oldValuePaise, item.quantity, ratePaise);
+
+      material.totalValuePaise = wac.totalValuePaise;
+      material.currentWeightedRate = wac.rateRupeesPerUnit;
+      material.currentWeightedRatePaise = Math.round(wac.ratePaisePerUnit);
       material.standardRate = item.rate;
       material.standardRatePaise = ratePaise;
       await material.save();

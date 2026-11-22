@@ -31,6 +31,8 @@ export function rupeesToPaise(rupees: number | string): number {
   return Math.round(num * 100);
 }
 
+export const toPaise = rupeesToPaise;
+
 /**
  * Converts integer paise (e.g. 750050) into decimal Rupees (7500.50).
  */
@@ -38,6 +40,8 @@ export function paiseToRupees(paise: number): number {
   if (isNaN(paise)) return 0;
   return Math.round(paise) / 100;
 }
+
+export const fromPaise = paiseToRupees;
 
 /**
  * Formats integer paise into a standard Indian currency display string.
@@ -49,6 +53,53 @@ export function formatPaise(paise: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
+}
+
+export const formatINR = formatPaise;
+
+/**
+ * Multiplies quantity with integer rate in paise using half-up rounding.
+ * Quantities round to 3 decimal places to avoid floating-point drift.
+ */
+export function mulQtyRate(qty: number, ratePaise: number): number {
+  const safeQty = Math.round(qty * 1000) / 1000;
+  return Math.round(safeQty * ratePaise);
+}
+
+/**
+ * Calculates a percentage of an amount in paise using half-up rounding.
+ */
+export function percentOf(amountPaise: number, ratePercent: number): number {
+  return Math.round((Math.round(amountPaise) * ratePercent) / 100);
+}
+
+/**
+ * Computes Weighted Average Cost (WAC) with exact minor units (paise).
+ * Formula: (currentValuePaise + (newQty * newRatePaise)) / (currentQty + newQty)
+ */
+export function computeWAC(
+  currentQty: number,
+  currentValuePaise: number,
+  newQty: number,
+  newRatePaise: number
+): {
+  totalQty: number;
+  totalValuePaise: number;
+  ratePaisePerUnit: number;
+  rateRupeesPerUnit: number;
+} {
+  const totalQty = Math.round((currentQty + newQty) * 1000) / 1000;
+  const addedValuePaise = mulQtyRate(newQty, newRatePaise);
+  const totalValuePaise = Math.round(currentValuePaise + addedValuePaise);
+  const ratePaisePerUnit = totalQty > 0 ? totalValuePaise / totalQty : 0;
+  const rateRupeesPerUnit = Math.round((ratePaisePerUnit / 100) * 1000) / 1000;
+
+  return {
+    totalQty,
+    totalValuePaise,
+    ratePaisePerUnit,
+    rateRupeesPerUnit
+  };
 }
 
 /**
