@@ -85,7 +85,7 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
 }, { _id: false });
 
 const InvoiceSchema = new Schema<IInvoice>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   invoiceNumber: { type: String, required: true, unique: true, index: true },
   salesOrderId: { type: Schema.Types.ObjectId, ref: 'SalesOrder', required: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },

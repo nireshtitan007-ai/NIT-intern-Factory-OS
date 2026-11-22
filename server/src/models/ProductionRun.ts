@@ -64,7 +64,7 @@ const IssuedMaterialSchema = new Schema<IIssuedMaterial>({
 }, { _id: false });
 
 const ProductionRunSchema = new Schema<IProductionRun>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   runNumber: { type: String, required: true, unique: true, index: true },
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
   productCode: { type: String, required: true },

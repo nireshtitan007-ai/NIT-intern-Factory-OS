@@ -27,7 +27,7 @@ export interface INotification extends Document {
 }
 
 const NotificationSchema = new Schema<INotification>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   recipientPhone: { type: String, required: true, index: true },
   recipientName: { type: String, required: true },
   templateType: { 

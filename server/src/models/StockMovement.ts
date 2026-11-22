@@ -35,7 +35,7 @@ export interface IStockMovement extends Document {
 }
 
 const StockMovementSchema = new Schema<IStockMovement>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   itemType: { 
     type: String, 
     required: true, 

@@ -30,7 +30,7 @@ import { Serializers } from '../utils/serializers';
 
 function getTenantId(req: Request): string {
   const authReq = req as AuthenticatedRequest;
-  return authReq.tenantId || authReq.user?.tenantId || 'TENANT_NASH_FOODS';
+  return authReq.tenantId || authReq.user?.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
 }
 
 export class ApiController {
@@ -625,7 +625,7 @@ export class ApiController {
       });
 
       await AuditLog.create({
-        tenantId: 'TENANT_NASH_FOODS',
+        tenantId: process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT',
         action: 'INQUIRY_SUBMITTED',
         entityType: 'Inquiry',
         entityId: inquiry._id.toString(),

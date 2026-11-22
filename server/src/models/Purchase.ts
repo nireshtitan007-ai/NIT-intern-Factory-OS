@@ -39,7 +39,7 @@ const PurchaseItemSchema = new Schema<IPurchaseItem>({
 }, { _id: false });
 
 const PurchaseSchema = new Schema<IPurchase>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   purchaseNumber: { type: String, required: true, unique: true, index: true },
   supplierName: { type: String, required: true },
   items: [PurchaseItemSchema],

@@ -362,7 +362,7 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
 
       await expect(
         StockLedgerService.recordMovement({
-          tenantId: 'TENANT_NASH_FOODS',
+          tenantId: process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT',
           itemType: 'FINISHED_GOOD',
           itemId: product!._id,
           itemCode: product!.code,

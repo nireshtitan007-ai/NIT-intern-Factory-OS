@@ -17,7 +17,8 @@ import {
   SalesOrder, 
   Invoice, 
   Payment, 
-  AuditLog 
+  AuditLog,
+  Settings 
 } from '../models';
 import { StockLedgerService } from '../services/stockLedger.service';
 
@@ -37,11 +38,31 @@ export async function seedBenchmarkData() {
       SalesOrder.deleteMany({}),
       Invoice.deleteMany({}),
       Payment.deleteMany({}),
-      AuditLog.deleteMany({})
+      AuditLog.deleteMany({}),
+      Settings.deleteMany({})
     ]);
   } finally {
     process.env.ALLOW_LEDGER_RESET = 'false';
   }
+
+  const tenantId = process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
+  await Settings.create({
+    tenantId,
+    legalName: process.env.FACTORY_NAME || 'ZenLyft Foods Manufacturing Pvt Ltd',
+    tradeName: 'ZenLyft Foods',
+    address: 'Industrial Estate, Tiruchirappalli, Tamil Nadu - 620015',
+    gstin: process.env.FACTORY_GSTIN || '33AAAAA0000A1Z5',
+    stateName: process.env.FACTORY_STATE || 'Tamil Nadu',
+    stateCode: process.env.FACTORY_STATE_CODE || '33',
+    bankDetails: {
+      bankName: 'State Bank of India',
+      accountNumber: '389201948201',
+      ifscCode: 'SBIN0001234',
+      branch: 'Industrial Estate Branch'
+    },
+    invoiceTerms: '1. Payment due within 30 days.\n2. In accordance with Section 31 of CGST Act.',
+    defaultTolerancePercent: 2
+  });
 
   console.log('[Seed] Inserting Users with secure credentials & roles...');
   const salt = await bcrypt.genSalt(10);

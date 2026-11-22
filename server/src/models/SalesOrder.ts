@@ -52,7 +52,7 @@ const SalesOrderItemSchema = new Schema<ISalesOrderItem>({
 }, { _id: false });
 
 const SalesOrderSchema = new Schema<ISalesOrder>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   orderNumber: { type: String, required: true, unique: true, index: true },
   salesmanId: { type: Schema.Types.ObjectId, ref: 'User' },
   salesmanName: { type: String, required: true },

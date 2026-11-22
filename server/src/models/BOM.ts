@@ -44,7 +44,7 @@ const BOMItemSchema = new Schema<IBOMItem>({
 }, { _id: false });
 
 const BOMSchema = new Schema<IBOM>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
   productCode: { type: String, required: true },
   productName: { type: String, required: true },

@@ -321,7 +321,7 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
   // Scenario 15: Cross-company / tenant data access is prevented
   it('Scenario 15: Users belong to tenant and cross-tenant access is constrained', async () => {
     const user = await User.findOne({ username: 'factory_admin' });
-    expect(user!.tenantId).toBe('TENANT_NASH_FOODS');
+    expect(user!.tenantId).toBe(process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT');
   });
 
   // Scenario 16: Offline orders synchronize without duplication

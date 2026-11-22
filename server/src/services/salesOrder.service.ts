@@ -10,7 +10,8 @@ import {
   IPayment,
   AuditLog,
   StockMovement,
-  getNextSequence
+  getNextSequence,
+  Settings
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
@@ -22,6 +23,7 @@ import {
   validatePaymentPaise
 } from '../utils/money';
 import { convert } from '../utils/units';
+import { getFinancialYear, formatInvoiceNumber } from '../utils/financialYear';
 
 export interface CreateOrderParams {
   tenantId?: string;
@@ -48,7 +50,7 @@ export class SalesOrderService {
     const customer = await Customer.findById(params.customerId);
     if (!customer) throw new Error(`Customer with ID ${params.customerId} not found`);
 
-    const tenantId = params.tenantId || customer.tenantId || 'TENANT_NASH_FOODS';
+    const tenantId = params.tenantId || customer.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
 
     // Idempotent deduplication for offline sync
     if (params.offlineSyncId) {
@@ -210,13 +212,20 @@ export class SalesOrderService {
     const customer = await Customer.findById(order.customerId);
     if (!customer) throw new Error('Customer not found');
 
-    const factoryState = 'Tamil Nadu';
-    const isInterState = customer.state.trim().toLowerCase() !== factoryState.toLowerCase();
+    const tenantId = order.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
+    const settings = await (Settings as any).getSettings(tenantId);
+    const factoryState = settings.stateName || 'Tamil Nadu';
+    const factoryStateCode = settings.stateCode || '33';
 
-    const tenantId = order.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
-    const financialYear = '2024-25';
+    // State check supports both state code (e.g. '33' vs '29') and state name comparison
+    const isInterState = customer.stateCode 
+      ? (customer.stateCode !== factoryStateCode)
+      : (customer.state.trim().toLowerCase() !== factoryState.toLowerCase());
+
+    const invoiceDate = new Date();
+    const financialYear = getFinancialYear(invoiceDate);
     const invoiceSeq = await getNextSequence(tenantId, `INVOICE:${financialYear}`);
-    const invoiceNumber = `INV/${financialYear}/${String(invoiceSeq).padStart(3, '0')}`;
+    const invoiceNumber = formatInvoiceNumber(financialYear, invoiceSeq);
 
     const invoiceItems: any[] = [];
     let taxableValuePaise = 0;
@@ -227,18 +236,21 @@ export class SalesOrderService {
 
     for (const item of order.items) {
       const product = await Product.findById(item.productId);
-      const hsnCode = product ? product.hsnCode : '19059040';
+      const hsnCode = product?.hsnCode || '19059040';
+      const productGstRate = product?.gstRate ?? 5;
       const unitPricePaise = item.unitPricePaise || rupeesToPaise(item.unitPrice);
       const itemTaxablePaise = item.quantity * unitPricePaise;
 
-      const gstRate = 5; // standard food rate for Murukku 200g
-      const gst = calculateGSTPaise(itemTaxablePaise, gstRate, isInterState);
+      const gst = calculateGSTPaise(itemTaxablePaise, productGstRate, isInterState);
 
       taxableValuePaise += gst.taxablePaise;
       cgstTotalPaise += gst.cgstPaise;
       sgstTotalPaise += gst.sgstPaise;
       igstTotalPaise += gst.igstPaise;
       grandTotalPaise += gst.grandTotalPaise;
+
+      const halfRate = isInterState ? 0 : (productGstRate / 2);
+      const fullRate = isInterState ? productGstRate : 0;
 
       invoiceItems.push({
         productId: item.productId,
@@ -250,13 +262,13 @@ export class SalesOrderService {
         unitPricePaise,
         taxableAmount: paiseToRupees(gst.taxablePaise),
         taxableAmountPaise: gst.taxablePaise,
-        cgstRate: isInterState ? 0 : 2.5,
+        cgstRate: halfRate,
         cgstAmount: paiseToRupees(gst.cgstPaise),
         cgstAmountPaise: gst.cgstPaise,
-        sgstRate: isInterState ? 0 : 2.5,
+        sgstRate: halfRate,
         sgstAmount: paiseToRupees(gst.sgstPaise),
         sgstAmountPaise: gst.sgstPaise,
-        igstRate: isInterState ? 5 : 0,
+        igstRate: fullRate,
         igstAmount: paiseToRupees(gst.igstPaise),
         igstAmountPaise: gst.igstPaise,
         totalAmount: paiseToRupees(gst.grandTotalPaise),
@@ -363,7 +375,7 @@ export class SalesOrderService {
       throw new Error(`Invoice ${invoice.invoiceNumber} is already dispatched`);
     }
 
-    const tenantId = invoice.tenantId || 'TENANT_NASH_FOODS';
+    const tenantId = invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
 
     for (const item of invoice.items) {
       const product = await Product.findOne({ _id: item.productId, tenantId }) || await Product.findById(item.productId);
@@ -481,7 +493,7 @@ export class SalesOrderService {
     const customer = await Customer.findById(invoice.customerId);
     if (!customer) throw new Error('Customer not found');
 
-    const tenantId = invoice.tenantId || 'TENANT_NASH_FOODS';
+    const tenantId = invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
 
     const paymentAmountPaise = rupeesToPaise(params.amount);
     const balanceDuePaise = invoice.balanceDuePaise || rupeesToPaise(invoice.balanceDue);

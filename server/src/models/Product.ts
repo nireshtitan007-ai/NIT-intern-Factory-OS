@@ -19,7 +19,7 @@ export interface IProduct extends Document {
 }
 
 const ProductSchema = new Schema<IProduct>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   code: { type: String, required: true, index: true },
   name: { type: String, required: true },
   packSize: { type: String, required: true },

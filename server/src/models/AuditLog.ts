@@ -13,7 +13,7 @@ export interface IAuditLog extends Document {
 }
 
 const AuditLogSchema = new Schema<IAuditLog>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   action: { type: String, required: true, index: true },
   entityType: { type: String, required: true, index: true },
   entityId: { type: String, required: true, index: true },

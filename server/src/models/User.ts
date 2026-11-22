@@ -42,7 +42,7 @@ const UserSchema = new Schema<IUser>({
     enum: ['admin', 'production', 'salesman', 'sales_manager', 'inventory', 'purchase', 'accountant', 'auditor', 'owner'],
     index: true 
   },
-  tenantId: { type: String, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   department: { type: String, default: 'General' },
   branch: { type: String, default: 'Main Plant - Tiruchirappalli' },
   phone: { type: String },

@@ -13,3 +13,4 @@ export * from './AuditLog';
 export * from './Notification';
 export * from './Inquiry';
 export * from './Counter';
+export * from './Settings';

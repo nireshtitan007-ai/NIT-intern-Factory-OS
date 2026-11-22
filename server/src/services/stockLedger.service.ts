@@ -39,7 +39,7 @@ export class StockLedgerService {
    */
   static async recordMovement(params: RecordMovementParams): Promise<IStockMovement> {
     const objectId = typeof params.itemId === 'string' ? new Types.ObjectId(params.itemId) : params.itemId;
-    const tenantId = params.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
+    const tenantId = params.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
     const session = params.session || undefined;
     
     let runningBalance: number;
@@ -163,7 +163,7 @@ export class StockLedgerService {
   /**
    * Recomputes exact balance by aggregating all historical movements
    */
-  static async calculateBalanceFromLedger(itemId: string | Types.ObjectId, tenantId: string = 'TENANT_NASH_FOODS'): Promise<number> {
+  static async calculateBalanceFromLedger(itemId: string | Types.ObjectId, tenantId: string = process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT'): Promise<number> {
     const objectId = typeof itemId === 'string' ? new Types.ObjectId(itemId) : itemId;
     const result = await StockMovement.aggregate([
       { $match: { tenantId, itemId: objectId } },
@@ -176,7 +176,7 @@ export class StockLedgerService {
    * Reconciles cached currentStock on Product and RawMaterial against the immutable ledger sum.
    * Section 4.4 & 4.6 Audit Requirement.
    */
-  static async reconcileInventory(tenantId: string = 'TENANT_NASH_FOODS') {
+  static async reconcileInventory(tenantId: string = process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT') {
     const items: Array<{
       itemId: string;
       itemCode: string;

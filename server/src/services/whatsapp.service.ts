@@ -16,27 +16,28 @@ export class WhatsAppService {
    * Resolves template strings with business variables
    */
   static renderTemplate(templateType: NotificationTemplateType, vars: Record<string, any>): string {
+    const company = vars.companyName || process.env.FACTORY_NAME || 'MANUFACTURING OS';
     switch (templateType) {
       case 'ORDER_CONFIRMATION':
-        return `*NASH FOODS FACTORY - ORDER CONFIRMATION*\n\nDear ${vars.customerName},\nYour sales order *${vars.orderNumber}* has been received.\n\n*Product:* ${vars.productName}\n*Quantity:* ${vars.quantity} pkts\n*Taxable Amount:* ₹${vars.totalAmount}\n\nOur admin team is verifying stock coverage for dispatch. Thank you for your business!`;
+        return `*${company.toUpperCase()} - ORDER CONFIRMATION*\n\nDear ${vars.customerName},\nYour sales order *${vars.orderNumber}* has been received.\n\n*Product:* ${vars.productName}\n*Quantity:* ${vars.quantity} pkts\n*Taxable Amount:* ₹${vars.totalAmount}\n\nOur admin team is verifying stock coverage for dispatch. Thank you for your business!`;
 
       case 'INVOICE_DELIVERY':
-        return `*NASH FOODS FACTORY - GST TAX INVOICE*\n\nDear ${vars.customerName},\nTax Invoice *${vars.invoiceNumber}* has been raised.\n\n*Taxable Value:* ₹${vars.taxableValue}\n*CGST:* ₹${vars.cgstTotal} | *SGST:* ₹${vars.sgstTotal} | *IGST:* ₹${vars.igstTotal}\n*Grand Total:* ₹${vars.grandTotal}\n*Place of Supply:* ${vars.placeOfSupply}\n\nInvoice PDF: ${vars.pdfUrl || 'Available on customer portal'}\nPayment Due Date: 30 days from invoice date.`;
+        return `*${company.toUpperCase()} - GST TAX INVOICE*\n\nDear ${vars.customerName},\nTax Invoice *${vars.invoiceNumber}* has been raised.\n\n*Taxable Value:* ₹${vars.taxableValue}\n*CGST:* ₹${vars.cgstTotal} | *SGST:* ₹${vars.sgstTotal} | *IGST:* ₹${vars.igstTotal}\n*Grand Total:* ₹${vars.grandTotal}\n*Place of Supply:* ${vars.placeOfSupply}\n\nInvoice PDF: ${vars.pdfUrl || 'Available on customer portal'}\nPayment Due Date: 30 days from invoice date.`;
 
       case 'DISPATCH_ALERT':
-        return `*NASH FOODS - DISPATCH NOTIFICATION*\n\nDear ${vars.customerName},\nYour shipment for Invoice *${vars.invoiceNumber}* has been dispatched from our Tiruchirappalli factory floor.\n\n*Items Dispatched:* ${vars.itemSummary || 'Packaged Snacks'}\nOur logistics team will coordinate delivery.`;
+        return `*${company.toUpperCase()} - DISPATCH NOTIFICATION*\n\nDear ${vars.customerName},\nYour shipment for Invoice *${vars.invoiceNumber}* has been dispatched from our factory floor.\n\n*Items Dispatched:* ${vars.itemSummary || 'Packaged Goods'}\nOur logistics team will coordinate delivery.`;
 
       case 'PAYMENT_RECEIPT':
-        return `*NASH FOODS - PAYMENT ACKNOWLEDGMENT*\n\nDear ${vars.customerName},\nWe acknowledge receipt of *₹${vars.amount}* against Invoice *${vars.invoiceNumber}*.\n*Payment Mode:* ${vars.paymentMethod || 'Bank Transfer'}\n*Remaining Balance Due:* ₹${vars.balanceDue}\n*Total Outstanding:* ₹${vars.customerOutstanding}\n\nThank you for prompt clearance!`;
+        return `*${company.toUpperCase()} - PAYMENT ACKNOWLEDGMENT*\n\nDear ${vars.customerName},\nWe acknowledge receipt of *₹${vars.amount}* against Invoice *${vars.invoiceNumber}*.\n*Payment Mode:* ${vars.paymentMethod || 'Bank Transfer'}\n*Remaining Balance Due:* ₹${vars.balanceDue}\n*Total Outstanding:* ₹${vars.customerOutstanding}\n\nThank you for prompt clearance!`;
 
       case 'LOW_STOCK_ALERT':
         return `*INTERNAL ALERT: LOW STOCK DETECTED*\n\n*Material:* ${vars.materialName} (${vars.materialCode})\n*Current Balance:* ${vars.currentStock} ${vars.unit}\n*Reorder Threshold:* ${vars.reorderLevel} ${vars.unit}\nPlease initiate supplier procurement requisition immediately.`;
 
       case 'PRODUCTION_VARIANCE_ALERT':
-        return `*INTERNAL ALERT: PRODUCTION VARIANCE EXCEEDED*\n\n*Run No:* ${vars.runNumber}\n*Product:* ${vars.productName}\n*Actual Yield:* ${vars.actualOutput} pkts (${vars.yieldPercent}%)\n*Yield Variance:* ${vars.yieldVariancePercent}% (Beyond ±3% threshold)\n*Damaged Pouches:* ${vars.damagedPouches} pcs\nPlease review floor operations.`;
+        return `*INTERNAL ALERT: PRODUCTION VARIANCE EXCEEDED*\n\n*Run No:* ${vars.runNumber}\n*Product:* ${vars.productName}\n*Actual Yield:* ${vars.actualOutput} pkts (${vars.yieldPercent}%)\n*Yield Variance:* ${vars.yieldVariancePercent}% (Beyond threshold)\n*Damaged Pouches:* ${vars.damagedPouches} pcs\nPlease review floor operations.`;
 
       default:
-        return `*NASH FOODS UPDATE*\nHello ${vars.customerName || 'Customer'}, you have a new update from Nash Foods factory.`;
+        return `*${company.toUpperCase()} UPDATE*\nHello ${vars.customerName || 'Customer'}, you have a new update from factory operations.`;
     }
   }
 

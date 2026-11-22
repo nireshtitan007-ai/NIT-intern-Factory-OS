@@ -51,7 +51,7 @@ export class ProductionService {
     const product = await Product.findById(params.productId);
     if (!product) throw new Error(`Product with ID ${params.productId} not found`);
 
-    const tenantId = params.tenantId || product.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
+    const tenantId = params.tenantId || product.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
 
     const bom = await BOM.findOne({ tenantId, productId: product._id }) || await BOM.findOne({ productId: product._id });
     if (!bom) throw new Error(`No BOM found for product ${product.name}`);

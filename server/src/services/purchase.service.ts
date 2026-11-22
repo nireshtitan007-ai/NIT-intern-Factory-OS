@@ -32,7 +32,7 @@ export class PurchaseService {
    * 3. Creates Purchase document and audit log
    */
   static async recordPurchase(params: CreatePurchaseParams): Promise<IPurchase> {
-    const tenantId = params.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
+    const tenantId = params.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
     const seq = await getNextSequence(tenantId, 'PURCHASE');
     const purchaseNumber = `PO-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
 

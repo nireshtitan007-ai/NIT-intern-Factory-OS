@@ -23,7 +23,7 @@ export interface ICustomer extends Document {
 }
 
 const CustomerSchema = new Schema<ICustomer>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   code: { type: String, required: true, index: true },
   name: { type: String, required: true, index: true },
   type: { type: String, required: true, enum: ['RETAILER', 'DISTRIBUTOR'] },

@@ -19,7 +19,7 @@ export interface IPayment extends Document {
 }
 
 const PaymentSchema = new Schema<IPayment>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   paymentNumber: { type: String, required: true, unique: true, index: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
   customerCode: { type: String, required: true },

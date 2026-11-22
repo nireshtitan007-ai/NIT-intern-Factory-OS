@@ -21,7 +21,7 @@ export interface IRawMaterial extends Document {
 }
 
 const RawMaterialSchema = new Schema<IRawMaterial>({
-  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   code: { type: String, required: true, index: true },
   name: { type: String, required: true, index: true },
   category: { 
