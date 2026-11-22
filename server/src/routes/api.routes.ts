@@ -28,6 +28,18 @@ import { recordPurchaseSchema } from '../schemas/purchase.schema';
 import { executeProductionRunSchema, updateOverheadsSchema } from '../schemas/production.schema';
 import { recordPaymentSchema } from '../schemas/payment.schema';
 import { submitInquirySchema, updateInquiryStatusSchema } from '../schemas/inquiry.schema';
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+  createProductSchema,
+  updateProductSchema,
+  createRawMaterialSchema,
+  updateRawMaterialSchema,
+  createBOMSchema,
+  updateBOMSchema,
+  createSupplierSchema,
+  updateSupplierSchema
+} from '../schemas/master.schema';
 import { RealtimeService } from '../services/realtime.service';
 
 const router = Router();
@@ -51,11 +63,39 @@ router.get('/realtime/events', authenticate, (req, res) => RealtimeService.subsc
 router.post('/benchmark/seed', authenticate, requireAdmin, requireNonProduction, ApiController.seedBenchmark);
 router.post('/benchmark/run', authenticate, requireAdmin, requireNonProduction, ApiController.runBenchmark);
 
-// --- Master Data (Shared across operational modules) ---
+// --- Master Data (Shared across operational modules with complete CRUD & audit logging) ---
+// Customers
 router.get('/customers', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'accountant', 'auditor'), ApiController.getCustomers);
+router.post('/customers', authenticate, requireRoles('admin', 'owner'), validateBody(createCustomerSchema), ApiController.createCustomer);
+router.put('/customers/:id', authenticate, requireRoles('admin', 'owner'), validateBody(updateCustomerSchema), ApiController.updateCustomer);
+router.delete('/customers/:id', authenticate, requireRoles('admin', 'owner'), ApiController.deleteCustomer);
+
+// Products
 router.get('/products', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'production', 'accountant', 'auditor', 'purchase', 'inventory'), ApiController.getProducts);
+router.post('/products', authenticate, requireRoles('admin', 'owner'), validateBody(createProductSchema), ApiController.createProduct);
+router.put('/products/:id', authenticate, requireRoles('admin', 'owner'), validateBody(updateProductSchema), ApiController.updateProduct);
+router.delete('/products/:id', authenticate, requireRoles('admin', 'owner'), ApiController.deleteProduct);
+
+// Raw Materials
 router.get('/raw-materials', authenticate, requireRoles('admin', 'owner', 'production', 'purchase', 'inventory', 'accountant', 'auditor'), ApiController.getRawMaterials);
+router.post('/raw-materials', authenticate, requireRoles('admin', 'owner', 'purchase'), validateBody(createRawMaterialSchema), ApiController.createRawMaterial);
+router.put('/raw-materials/:id', authenticate, requireRoles('admin', 'owner', 'purchase'), validateBody(updateRawMaterialSchema), ApiController.updateRawMaterial);
+router.delete('/raw-materials/:id', authenticate, requireRoles('admin', 'owner', 'purchase'), ApiController.deleteRawMaterial);
+
+// BOMs
 router.get('/boms', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'accountant', 'auditor'), ApiController.getBOMs);
+router.post('/boms', authenticate, requireRoles('admin', 'owner', 'production'), validateBody(createBOMSchema), ApiController.createBOM);
+router.put('/boms/:id', authenticate, requireRoles('admin', 'owner', 'production'), validateBody(updateBOMSchema), ApiController.updateBOM);
+router.delete('/boms/:id', authenticate, requireRoles('admin', 'owner', 'production'), ApiController.deleteBOM);
+
+// Suppliers
+router.get('/suppliers', authenticate, requireRoles('admin', 'owner', 'purchase', 'accountant', 'auditor'), ApiController.getSuppliers);
+router.post('/suppliers', authenticate, requireRoles('admin', 'owner', 'purchase'), validateBody(createSupplierSchema), ApiController.createSupplier);
+router.put('/suppliers/:id', authenticate, requireRoles('admin', 'owner', 'purchase'), validateBody(updateSupplierSchema), ApiController.updateSupplier);
+router.delete('/suppliers/:id', authenticate, requireRoles('admin', 'owner', 'purchase'), ApiController.deleteSupplier);
+
+// Low-Stock Reorder Alerts
+router.get('/inventory/reorder-alerts', authenticate, requireRoles('admin', 'owner', 'purchase', 'production', 'inventory'), ApiController.getReorderAlerts);
 
 // --- Authoritative Central Inventory ---
 router.get('/inventory/stock-summary', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'purchase', 'accountant', 'auditor'), ApiController.getStockSummary);

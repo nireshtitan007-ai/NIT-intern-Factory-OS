@@ -82,7 +82,17 @@ export class SalesOrderService {
         quantityInPackets = convert(item.quantity, 'carton', 'packet', { packetsPerCarton });
       }
 
-      const unitPrice = item.unitPrice !== undefined ? item.unitPrice : product.sellingPrice;
+      let unitPrice = item.unitPrice;
+      if (unitPrice === undefined) {
+        // Priority 1: Customer-specific agreed price list
+        const customPrice = customer.priceList?.find(p => p.productCode === product.code);
+        if (customPrice && customPrice.unitPrice !== undefined) {
+          unitPrice = customPrice.unitPrice;
+        } else {
+          // Priority 2: Standard Master catalogue selling price
+          unitPrice = product.sellingPrice;
+        }
+      }
       const unitPricePaise = rupeesToPaise(unitPrice);
       const lineTotalPaise = quantityInPackets * unitPricePaise;
       const lineTotal = paiseToRupees(lineTotalPaise);

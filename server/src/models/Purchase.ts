@@ -16,6 +16,7 @@ export interface IPurchaseItem {
 export interface IPurchase extends Document {
   tenantId: string;
   purchaseNumber: string;
+  supplierId?: Types.ObjectId;
   supplierName: string;
   items: IPurchaseItem[];
   totalAmount: number;
@@ -41,6 +42,7 @@ const PurchaseItemSchema = new Schema<IPurchaseItem>({
 const PurchaseSchema = new Schema<IPurchase>({
   tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
   purchaseNumber: { type: String, required: true, unique: true, index: true },
+  supplierId: { type: Schema.Types.ObjectId, ref: 'Supplier' },
   supplierName: { type: String, required: true },
   items: [PurchaseItemSchema],
   totalAmount: { type: Number, required: true },

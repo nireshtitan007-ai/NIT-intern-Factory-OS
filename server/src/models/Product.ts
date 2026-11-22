@@ -15,6 +15,7 @@ export interface IProduct extends Document {
   shelfLifeDays?: number; // e.g. 90 days for FEFO dispatch
   currentStock: number; // packets
   openingStock: number;
+  active: boolean;
   createdAt: Date;
 }
 
@@ -32,6 +33,7 @@ const ProductSchema = new Schema<IProduct>({
   shelfLifeDays: { type: Number, default: 90 },
   currentStock: { type: Number, default: 0 },
   openingStock: { type: Number, default: 0 },
+  active: { type: Boolean, default: true, index: true },
   createdAt: { type: Date, default: Date.now }
 });
 

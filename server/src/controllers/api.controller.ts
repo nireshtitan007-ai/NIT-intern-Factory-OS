@@ -12,7 +12,8 @@ import {
   Payment, 
   StockMovement, 
   AuditLog, 
-  Inquiry 
+  Inquiry,
+  Supplier 
 } from '../models';
 import { StockLedgerService } from '../services/stockLedger.service';
 import { PurchaseService } from '../services/purchase.service';
@@ -68,12 +69,113 @@ export class ApiController {
     }
   }
 
-  // --- Masters: Customers, Products, Raw Materials, BOMs ---
+  // --- Masters: Customers, Products, Raw Materials, BOMs, Suppliers ---
   static async getCustomers(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const customers = await Customer.find({ tenantId }).sort({ name: 1 }).lean();
+      const query: any = { tenantId };
+      if (req.query.includeInactive !== 'true') query.active = { $ne: false };
+      const customers = await Customer.find(query).sort({ name: 1 }).lean();
       res.json({ success: true, customers: customers.map(c => Serializers.serializeCustomer(c)) });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async createCustomer(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const code = req.body.code.toUpperCase();
+      const existing = await Customer.findOne({ tenantId, code });
+      if (existing) return res.status(400).json({ success: false, error: `Customer code ${code} already exists.` });
+
+      const priceList = (req.body.priceList || []).map((p: any) => ({
+        productCode: p.productCode.toUpperCase(),
+        unitPrice: p.unitPrice,
+        unitPricePaise: Math.round(p.unitPrice * 100)
+      }));
+
+      const customer = await Customer.create({
+        ...req.body,
+        code,
+        priceList,
+        tenantId,
+        creditLimit: req.body.creditLimit ?? 50000,
+        creditLimitPaise: Math.round((req.body.creditLimit ?? 50000) * 100),
+        active: true
+      });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'CREATE',
+        entityType: 'Customer',
+        entityId: customer._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { code: customer.code, name: customer.name, type: customer.type }
+      });
+
+      res.status(201).json({ success: true, customer: Serializers.serializeCustomer(customer) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async updateCustomer(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const updates = { ...req.body };
+      if (updates.code) updates.code = updates.code.toUpperCase();
+      if (updates.creditLimit !== undefined) {
+        updates.creditLimitPaise = Math.round(updates.creditLimit * 100);
+      }
+      if (updates.priceList) {
+        updates.priceList = updates.priceList.map((p: any) => ({
+          productCode: p.productCode.toUpperCase(),
+          unitPrice: p.unitPrice,
+          unitPricePaise: Math.round(p.unitPrice * 100)
+        }));
+      }
+
+      const customer = await Customer.findOneAndUpdate({ _id: req.params.id, tenantId }, updates, { new: true });
+      if (!customer) return res.status(404).json({ success: false, error: 'Customer not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'UPDATE',
+        entityType: 'Customer',
+        entityId: customer._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: updates
+      });
+
+      res.json({ success: true, customer: Serializers.serializeCustomer(customer) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async deleteCustomer(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const customer = await Customer.findOneAndUpdate({ _id: req.params.id, tenantId }, { active: false }, { new: true });
+      if (!customer) return res.status(404).json({ success: false, error: 'Customer not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'SOFT_DELETE',
+        entityType: 'Customer',
+        entityId: customer._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { active: false }
+      });
+
+      res.json({ success: true, message: 'Customer deactivated successfully' });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -82,8 +184,95 @@ export class ApiController {
   static async getProducts(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const products = await Product.find({ tenantId }).sort({ name: 1 }).lean();
+      const query: any = { tenantId };
+      if (req.query.includeInactive !== 'true') query.active = { $ne: false };
+      const products = await Product.find(query).sort({ name: 1 }).lean();
       res.json({ success: true, products: products.map(p => Serializers.serializeProduct(p)) });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async createProduct(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const code = req.body.code.toUpperCase();
+      const existing = await Product.findOne({ tenantId, code });
+      if (existing) return res.status(400).json({ success: false, error: `Product code ${code} already exists.` });
+
+      const sellingPricePaise = Math.round(req.body.sellingPrice * 100);
+      const product = await Product.create({
+        ...req.body,
+        code,
+        tenantId,
+        sellingPricePaise,
+        active: true
+      });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'CREATE',
+        entityType: 'Product',
+        entityId: product._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { code: product.code, name: product.name, sellingPrice: product.sellingPrice }
+      });
+
+      res.status(201).json({ success: true, product: Serializers.serializeProduct(product) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async updateProduct(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const updates = { ...req.body };
+      if (updates.code) updates.code = updates.code.toUpperCase();
+      if (updates.sellingPrice !== undefined) {
+        updates.sellingPricePaise = Math.round(updates.sellingPrice * 100);
+      }
+
+      const product = await Product.findOneAndUpdate({ _id: req.params.id, tenantId }, updates, { new: true });
+      if (!product) return res.status(404).json({ success: false, error: 'Product not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'UPDATE',
+        entityType: 'Product',
+        entityId: product._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: updates
+      });
+
+      res.json({ success: true, product: Serializers.serializeProduct(product) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async deleteProduct(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const product = await Product.findOneAndUpdate({ _id: req.params.id, tenantId }, { active: false }, { new: true });
+      if (!product) return res.status(404).json({ success: false, error: 'Product not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'SOFT_DELETE',
+        entityType: 'Product',
+        entityId: product._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { active: false }
+      });
+
+      res.json({ success: true, message: 'Product deactivated successfully' });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -92,8 +281,100 @@ export class ApiController {
   static async getRawMaterials(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const materials = await RawMaterial.find({ tenantId }).sort({ category: 1, name: 1 }).lean();
+      const query: any = { tenantId };
+      if (req.query.includeInactive !== 'true') query.active = { $ne: false };
+      const materials = await RawMaterial.find(query).sort({ category: 1, name: 1 }).lean();
       res.json({ success: true, materials: materials.map(m => Serializers.serializeRawMaterial(m)) });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async createRawMaterial(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const code = req.body.code.toUpperCase();
+      const existing = await RawMaterial.findOne({ tenantId, code });
+      if (existing) return res.status(400).json({ success: false, error: `Material code ${code} already exists.` });
+
+      const standardRatePaise = Math.round(req.body.standardRate * 100);
+      const material = await RawMaterial.create({
+        ...req.body,
+        code,
+        tenantId,
+        standardRatePaise,
+        currentWeightedRate: req.body.standardRate,
+        currentWeightedRatePaise: standardRatePaise,
+        currentStock: 0,
+        openingStock: 0,
+        totalValuePaise: 0,
+        active: true
+      });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'CREATE',
+        entityType: 'RawMaterial',
+        entityId: material._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { code: material.code, name: material.name, category: material.category }
+      });
+
+      res.status(201).json({ success: true, material: Serializers.serializeRawMaterial(material) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async updateRawMaterial(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const updates = { ...req.body };
+      if (updates.code) updates.code = updates.code.toUpperCase();
+      if (updates.standardRate !== undefined) {
+        updates.standardRatePaise = Math.round(updates.standardRate * 100);
+      }
+
+      const material = await RawMaterial.findOneAndUpdate({ _id: req.params.id, tenantId }, updates, { new: true });
+      if (!material) return res.status(404).json({ success: false, error: 'Raw material not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'UPDATE',
+        entityType: 'RawMaterial',
+        entityId: material._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: updates
+      });
+
+      res.json({ success: true, material: Serializers.serializeRawMaterial(material) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async deleteRawMaterial(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const material = await RawMaterial.findOneAndUpdate({ _id: req.params.id, tenantId }, { active: false }, { new: true });
+      if (!material) return res.status(404).json({ success: false, error: 'Raw material not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'SOFT_DELETE',
+        entityType: 'RawMaterial',
+        entityId: material._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { active: false }
+      });
+
+      res.json({ success: true, message: 'Raw material deactivated successfully' });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -102,8 +383,208 @@ export class ApiController {
   static async getBOMs(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const boms = await BOM.find({ tenantId }).populate('productId').lean();
+      const query: any = { tenantId };
+      if (req.query.includeInactive !== 'true') query.active = { $ne: false };
+      const boms = await BOM.find(query).populate('productId').lean();
       res.json({ success: true, boms });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async createBOM(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const product = await Product.findById(req.body.productId);
+      if (!product) return res.status(400).json({ success: false, error: 'Product not found for BOM' });
+
+      const bom = await BOM.create({
+        ...req.body,
+        tenantId,
+        productCode: product.code,
+        productName: product.name,
+        active: true
+      });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'CREATE',
+        entityType: 'BOM',
+        entityId: bom._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { productCode: product.code, productName: product.name }
+      });
+
+      res.status(201).json({ success: true, bom });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async updateBOM(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const bom = await BOM.findOneAndUpdate({ _id: req.params.id, tenantId }, req.body, { new: true });
+      if (!bom) return res.status(404).json({ success: false, error: 'BOM not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'UPDATE',
+        entityType: 'BOM',
+        entityId: bom._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: req.body
+      });
+
+      res.json({ success: true, bom });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async deleteBOM(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const bom = await BOM.findOneAndUpdate({ _id: req.params.id, tenantId }, { active: false }, { new: true });
+      if (!bom) return res.status(404).json({ success: false, error: 'BOM not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'SOFT_DELETE',
+        entityType: 'BOM',
+        entityId: bom._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { active: false }
+      });
+
+      res.json({ success: true, message: 'BOM deactivated successfully' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // --- Suppliers ---
+  static async getSuppliers(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const query: any = { tenantId };
+      if (req.query.includeInactive !== 'true') query.active = { $ne: false };
+      const suppliers = await Supplier.find(query).sort({ name: 1 }).lean();
+      res.json({ success: true, suppliers });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async createSupplier(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const code = req.body.code.toUpperCase();
+      const existing = await Supplier.findOne({ tenantId, code });
+      if (existing) return res.status(400).json({ success: false, error: `Supplier code ${code} already exists.` });
+
+      const supplier = await Supplier.create({
+        ...req.body,
+        code,
+        tenantId,
+        active: true
+      });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'CREATE',
+        entityType: 'Supplier',
+        entityId: supplier._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { code: supplier.code, name: supplier.name }
+      });
+
+      res.status(201).json({ success: true, supplier });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async updateSupplier(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const updates = { ...req.body };
+      if (updates.code) updates.code = updates.code.toUpperCase();
+
+      const supplier = await Supplier.findOneAndUpdate({ _id: req.params.id, tenantId }, updates, { new: true });
+      if (!supplier) return res.status(404).json({ success: false, error: 'Supplier not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'UPDATE',
+        entityType: 'Supplier',
+        entityId: supplier._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: updates
+      });
+
+      res.json({ success: true, supplier });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async deleteSupplier(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const authReq = req as AuthenticatedRequest;
+      const supplier = await Supplier.findOneAndUpdate({ _id: req.params.id, tenantId }, { active: false }, { new: true });
+      if (!supplier) return res.status(404).json({ success: false, error: 'Supplier not found' });
+
+      await AuditLog.create({
+        tenantId,
+        action: 'SOFT_DELETE',
+        entityType: 'Supplier',
+        entityId: supplier._id.toString(),
+        performedBy: authReq.user?.username || 'ADMIN',
+        role: authReq.user?.role || 'admin',
+        details: { active: false }
+      });
+
+      res.json({ success: true, message: 'Supplier deactivated successfully' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // --- Low-Stock Reorder Alerts ---
+  static async getReorderAlerts(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const materials = await RawMaterial.find({
+        tenantId,
+        active: { $ne: false },
+        $expr: { $lte: ['$currentStock', '$reorderLevel'] }
+      }).lean();
+
+      res.json({
+        success: true,
+        alerts: materials.map(m => ({
+          materialId: m._id,
+          code: m.code,
+          name: m.name,
+          category: m.category,
+          currentStock: m.currentStock,
+          reorderLevel: m.reorderLevel,
+          unit: m.unit,
+          shortage: Math.max(0, m.reorderLevel - m.currentStock)
+        }))
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

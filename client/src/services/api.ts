@@ -100,12 +100,53 @@ export const api = {
   runBenchmark: () => fetch(`${API_BASE}/benchmark/run`, { method: 'POST' }).then(r => r.json()),
 
   // Masters
-  getCustomers: () => fetch(`${API_BASE}/customers`, { headers: getAuthHeaders() }).then(r => r.json()),
-  getProducts: () => fetch(`${API_BASE}/products`, { headers: getAuthHeaders() }).then(r => r.json()),
-  getRawMaterials: () => fetch(`${API_BASE}/raw-materials`, { headers: getAuthHeaders() }).then(r => r.json()),
-  getBOMs: () => fetch(`${API_BASE}/boms`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getCustomers: (includeInactive?: boolean) => 
+    fetch(`${API_BASE}/customers${includeInactive ? '?includeInactive=true' : ''}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  createCustomer: (data: any) => 
+    fetch(`${API_BASE}/customers`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  updateCustomer: (id: string, data: any) => 
+    fetch(`${API_BASE}/customers/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  deleteCustomer: (id: string) => 
+    fetch(`${API_BASE}/customers/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(r => r.json()),
 
-  // Inventory
+  getProducts: (includeInactive?: boolean) => 
+    fetch(`${API_BASE}/products${includeInactive ? '?includeInactive=true' : ''}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  createProduct: (data: any) => 
+    fetch(`${API_BASE}/products`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  updateProduct: (id: string, data: any) => 
+    fetch(`${API_BASE}/products/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  deleteProduct: (id: string) => 
+    fetch(`${API_BASE}/products/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(r => r.json()),
+
+  getRawMaterials: (includeInactive?: boolean) => 
+    fetch(`${API_BASE}/raw-materials${includeInactive ? '?includeInactive=true' : ''}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  createRawMaterial: (data: any) => 
+    fetch(`${API_BASE}/raw-materials`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  updateRawMaterial: (id: string, data: any) => 
+    fetch(`${API_BASE}/raw-materials/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  deleteRawMaterial: (id: string) => 
+    fetch(`${API_BASE}/raw-materials/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(r => r.json()),
+
+  getBOMs: (includeInactive?: boolean) => 
+    fetch(`${API_BASE}/boms${includeInactive ? '?includeInactive=true' : ''}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  createBOM: (data: any) => 
+    fetch(`${API_BASE}/boms`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  updateBOM: (id: string, data: any) => 
+    fetch(`${API_BASE}/boms/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  deleteBOM: (id: string) => 
+    fetch(`${API_BASE}/boms/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(r => r.json()),
+
+  getSuppliers: (includeInactive?: boolean) => 
+    fetch(`${API_BASE}/suppliers${includeInactive ? '?includeInactive=true' : ''}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  createSupplier: (data: any) => 
+    fetch(`${API_BASE}/suppliers`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  updateSupplier: (id: string, data: any) => 
+    fetch(`${API_BASE}/suppliers/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) }).then(r => r.json()),
+  deleteSupplier: (id: string) => 
+    fetch(`${API_BASE}/suppliers/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).then(r => r.json()),
+
+  // Inventory & Reorder Alerts
+  getReorderAlerts: () => fetch(`${API_BASE}/inventory/reorder-alerts`, { headers: getAuthHeaders() }).then(r => r.json()),
   getStockSummary: () => fetch(`${API_BASE}/inventory/stock-summary`, { headers: getAuthHeaders() }).then(r => r.json()),
   getStockLedger: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';

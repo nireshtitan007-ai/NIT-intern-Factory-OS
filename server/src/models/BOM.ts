@@ -24,6 +24,7 @@ export interface IBOM extends Document {
   tolerancePercent: number; // e.g. 3%
   rawMaterials: IBOMItem[];
   packagingMaterials: IBOMItem[];
+  active: boolean;
   createdAt: Date;
 }
 
@@ -53,6 +54,7 @@ const BOMSchema = new Schema<IBOM>({
   tolerancePercent: { type: Number, default: 3 },
   rawMaterials: [BOMItemSchema],
   packagingMaterials: [BOMItemSchema],
+  active: { type: Boolean, default: true, index: true },
   createdAt: { type: Date, default: Date.now }
 });
 

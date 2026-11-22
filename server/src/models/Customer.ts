@@ -3,6 +3,12 @@ import { integerPaiseValidator } from '../utils/money';
 
 export type CustomerType = 'RETAILER' | 'DISTRIBUTOR';
 
+export interface ICustomerPriceListItem {
+  productCode: string;
+  unitPrice: number;
+  unitPricePaise?: number;
+}
+
 export interface ICustomer extends Document {
   tenantId: string;
   code: string;
@@ -19,6 +25,8 @@ export interface ICustomer extends Document {
   outstandingBalance: number;
   outstandingBalancePaise?: number;
   assignedSalesmanId?: string;
+  priceList?: ICustomerPriceListItem[];
+  active: boolean;
   createdAt: Date;
 }
 
@@ -38,6 +46,12 @@ const CustomerSchema = new Schema<ICustomer>({
   outstandingBalance: { type: Number, default: 0 },
   outstandingBalancePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   assignedSalesmanId: { type: String },
+  priceList: [{
+    productCode: { type: String, required: true },
+    unitPrice: { type: Number, required: true },
+    unitPricePaise: { type: Number, default: 0, validate: integerPaiseValidator }
+  }],
+  active: { type: Boolean, default: true, index: true },
   createdAt: { type: Date, default: Date.now }
 });
 

@@ -17,6 +17,7 @@ export interface IRawMaterial extends Document {
   currentWeightedRatePaise?: number;
   totalValuePaise?: number;
   reorderLevel: number;
+  active: boolean;
   createdAt: Date;
 }
 
@@ -38,6 +39,7 @@ const RawMaterialSchema = new Schema<IRawMaterial>({
   currentWeightedRatePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   totalValuePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   reorderLevel: { type: Number, default: 0 },
+  active: { type: Boolean, default: true, index: true },
   createdAt: { type: Date, default: Date.now }
 });
 
