@@ -23,7 +23,9 @@ import {
   Check,
   X,
   Mail,
-  UserCheck
+  UserCheck,
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
@@ -539,6 +541,7 @@ export const AdminControlCenterView: React.FC = () => {
                   <tr>
                     <th className="py-3 px-4">Order Ref</th>
                     <th className="py-3 px-4">Customer & Route</th>
+                    <th className="py-3 px-4">GPS Check-In</th>
                     <th className="py-3 px-4">Ordered Items</th>
                     <th className="py-3 px-4">Total Amount</th>
                     <th className="py-3 px-4">Stock Availability Check</th>
@@ -555,6 +558,27 @@ export const AdminControlCenterView: React.FC = () => {
                       <td className="py-3 px-4">
                         <div className="font-bold text-charcoal-900">{o.customerName}</div>
                         <div className="text-[10px] text-charcoal-500">Logged by: {o.salesmanName}</div>
+                      </td>
+                      <td className="py-3 px-4 text-xs">
+                        {o.checkIn?.lat && o.checkIn?.lng ? (
+                          <div className="space-y-0.5">
+                            <div className="font-mono text-[11px] text-charcoal-700 font-semibold flex items-center space-x-1">
+                              <MapPin className="w-3 h-3 text-forest-600 inline" />
+                              <span>{o.checkIn.lat.toFixed(4)}, {o.checkIn.lng.toFixed(4)}</span>
+                            </div>
+                            <a
+                              href={`https://www.google.com/maps?q=${o.checkIn.lat},${o.checkIn.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center text-[10px] text-forest-700 hover:underline font-bold"
+                            >
+                              <span>Open in Maps</span>
+                              <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-charcoal-400 italic">No GPS</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 font-medium text-charcoal-900">
                         {o.items?.map((i: any) => `${i.quantity} pkts of ${i.productCode}`).join(', ')}

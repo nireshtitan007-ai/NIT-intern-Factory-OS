@@ -26,6 +26,45 @@ interface SalesmanViewProps {
   isOffline: boolean;
 }
 
+// Request salesman GPS location with a strict 5-second timeout (never blocks order flow)
+const getSalesmanLocation = (): Promise<{ lat: number; lng: number; accuracyMeters?: number; capturedAt: string } | undefined> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      return resolve(undefined);
+    }
+    let resolved = false;
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve(undefined);
+      }
+    }, 5000);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          resolve({
+            lat: Number(pos.coords.latitude.toFixed(6)),
+            lng: Number(pos.coords.longitude.toFixed(6)),
+            accuracyMeters: Math.round(pos.coords.accuracy),
+            capturedAt: new Date(pos.timestamp).toISOString()
+          });
+        }
+      },
+      () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          resolve(undefined);
+        }
+      },
+      { timeout: 5000, enableHighAccuracy: true }
+    );
+  });
+};
+
 export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,6 +148,10 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
     setNotification(null);
 
     const clientUuid = 'offline_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    
+    // Request GPS location (5s timeout fallback - never blocks order submission)
+    const checkIn = await getSalesmanLocation();
+
     const orderData = {
       clientUuid,
       customerId: customer._id,
@@ -122,6 +165,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
       }],
       totalAmount: quantity * product.sellingPrice,
       offlineSyncId: clientUuid,
+      checkIn,
       createdAt: new Date().toISOString()
     };
 
@@ -132,7 +176,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
       setPendingOfflineOrders(pending);
       setNotification({
         type: 'warning',
-        msg: `Offline Mode: Order for ${quantity} pkts stored in IndexedDB. It will sync automatically when back online.`
+        msg: `Offline Mode: Order for ${quantity} pkts stored in IndexedDB${checkIn ? ' with GPS check-in' : ''}. It will sync automatically when back online.`
       });
       setIsSubmitting(false);
     } else {
@@ -142,13 +186,14 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
           customerId: customer._id,
           salesmanName: 'Salesman A (Tamil Nadu)',
           items: [{ productCode: product.code, quantity, unitPrice: product.sellingPrice }],
-          offlineSyncId: clientUuid
+          offlineSyncId: clientUuid,
+          checkIn
         });
 
         if (res.success) {
           setNotification({
             type: 'success',
-            msg: `Order ${res.order.orderNumber} placed successfully! Status: ${res.order.status}`
+            msg: `Order ${res.order.orderNumber} placed successfully! Status: ${res.order.status}${checkIn ? ' (GPS Verified)' : ''}`
           });
           loadData();
         } else {
@@ -177,7 +222,8 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         customerId: p.customerId,
         salesmanName: 'Salesman A (Tamil Nadu)',
         items: p.items,
-        offlineSyncId: p.clientUuid
+        offlineSyncId: p.clientUuid,
+        checkIn: p.checkIn
       }));
 
       const res = await api.syncOfflineBatch(payload);

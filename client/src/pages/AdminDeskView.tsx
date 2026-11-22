@@ -9,7 +9,8 @@ import {
   Truck, 
   CreditCard, 
   Download, 
-  RefreshCw 
+  RefreshCw,
+  MapPin 
 } from 'lucide-react';
 
 export const AdminDeskView: React.FC = () => {
@@ -172,6 +173,20 @@ export const AdminDeskView: React.FC = () => {
                         </div>
                         <span className="text-xs text-indigo-600 font-semibold">{order.orderNumber}</span>
                         <span className="text-xs text-slate-400 ml-2">by {order.salesmanName}</span>
+                        {order.checkIn?.lat && order.checkIn?.lng && (
+                          <div className="text-[11px] text-slate-600 flex items-center space-x-1.5 mt-1">
+                            <MapPin className="w-3 h-3 text-emerald-600" />
+                            <span className="font-mono font-medium">{order.checkIn.lat.toFixed(4)}, {order.checkIn.lng.toFixed(4)}</span>
+                            <a
+                              href={`https://www.google.com/maps?q=${order.checkIn.lat},${order.checkIn.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-600 hover:underline font-bold text-[10px]"
+                            >
+                              Open in Maps
+                            </a>
+                          </div>
+                        )}
                       </div>
 
                       {/* Stock Coverage Indicator */}

@@ -92,6 +92,12 @@ export interface SalesOrder {
     shortageQuantity: number;
   };
   invoiceId?: string;
+  checkIn?: {
+    lat: number;
+    lng: number;
+    accuracyMeters?: number;
+    capturedAt?: string;
+  };
   createdAt: string;
 }
 

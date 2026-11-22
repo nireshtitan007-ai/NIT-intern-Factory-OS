@@ -37,8 +37,21 @@ export interface ISalesOrder extends Document {
   rejectionReason?: string;
   notes?: string;
   invoiceId?: Types.ObjectId;
+  checkIn?: {
+    lat: number;
+    lng: number;
+    accuracyMeters?: number;
+    capturedAt?: Date;
+  };
   createdAt: Date;
 }
+
+const CheckInSchema = new Schema({
+  lat: { type: Number, required: true },
+  lng: { type: Number, required: true },
+  accuracyMeters: { type: Number },
+  capturedAt: { type: Date }
+}, { _id: false });
 
 const SalesOrderItemSchema = new Schema<ISalesOrderItem>({
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -80,6 +93,7 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
   rejectionReason: { type: String },
   notes: { type: String },
   invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
+  checkIn: { type: CheckInSchema, default: undefined },
   createdAt: { type: Date, default: Date.now, index: true }
 });
 

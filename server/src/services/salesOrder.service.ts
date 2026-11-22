@@ -39,6 +39,12 @@ export interface CreateOrderParams {
     unit?: string;
   }>;
   offlineSyncId?: string;
+  checkIn?: {
+    lat: number;
+    lng: number;
+    accuracyMeters?: number;
+    capturedAt?: Date | string;
+  };
   notes?: string;
 }
 
@@ -140,6 +146,12 @@ export class SalesOrderService {
         isSufficient,
         shortageQuantity: totalShortage
       },
+      checkIn: params.checkIn ? {
+        lat: params.checkIn.lat,
+        lng: params.checkIn.lng,
+        accuracyMeters: params.checkIn.accuracyMeters,
+        capturedAt: params.checkIn.capturedAt ? new Date(params.checkIn.capturedAt) : new Date()
+      } : undefined,
       notes: params.notes,
       createdAt: new Date()
     });
@@ -159,7 +171,8 @@ export class SalesOrderService {
         totalAmount,
         totalAmountPaise,
         isSufficient,
-        shortageQuantity: totalShortage
+        shortageQuantity: totalShortage,
+        checkIn: params.checkIn
       }
     });
 

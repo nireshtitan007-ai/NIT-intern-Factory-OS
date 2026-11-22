@@ -14,6 +14,12 @@ export interface OfflineOrderRecord {
   }>;
   totalAmount: number;
   status: 'QUEUED' | 'SYNCED' | 'FAILED';
+  checkIn?: {
+    lat: number;
+    lng: number;
+    accuracyMeters?: number;
+    capturedAt: string;
+  };
   createdAt: string;
   error?: string;
 }
