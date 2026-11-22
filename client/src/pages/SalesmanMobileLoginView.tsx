@@ -17,14 +17,12 @@ interface SalesmanMobileLoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
   onSwitchToAdmin: () => void;
   onSwitchToStaff: () => void;
-  onBackToLanding?: () => void;
 }
 
 export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = ({
   onLoginSuccess,
   onSwitchToAdmin,
-  onSwitchToStaff,
-  onBackToLanding
+  onSwitchToStaff
 }) => {
   const [username, setUsername] = useState('salesman_a');
   const [password, setPassword] = useState('Nash@123');
@@ -79,15 +77,6 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
             <span className="text-[10px] text-forest-700 font-semibold block uppercase">Field Terminal</span>
           </div>
         </div>
-
-        {onBackToLanding && (
-          <button
-            onClick={onBackToLanding}
-            className="text-xs font-semibold text-charcoal-500 hover:text-charcoal-900 transition"
-          >
-            Public Site
-          </button>
-        )}
       </header>
 
       {/* Main Responsive Login Card */}

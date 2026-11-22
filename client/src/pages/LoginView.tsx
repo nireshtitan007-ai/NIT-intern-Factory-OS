@@ -7,7 +7,9 @@ import {
   AlertCircle, 
   Building2, 
   Users, 
-  Compass
+  Compass,
+  Play,
+  Target
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
@@ -15,14 +17,16 @@ import { SalesmanMobileLoginView } from './SalesmanMobileLoginView';
 
 interface LoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
-  onBackToLanding?: () => void;
   initialMode?: 'salesman' | 'admin' | 'staff';
+  onOpenBenchmark?: () => void;
+  onOpenPitch?: () => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ 
   onLoginSuccess, 
-  onBackToLanding,
-  initialMode = 'admin'
+  initialMode = 'admin',
+  onOpenBenchmark,
+  onOpenPitch
 }) => {
   const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(initialMode);
   const [username, setUsername] = useState('factory_admin');
@@ -30,7 +34,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // If salesman mode is selected, render the responsive Salesman Mobile Login
+  // If salesman mode is selected, render the dedicated Salesman Mobile Login
   if (loginMode === 'salesman') {
     return (
       <SalesmanMobileLoginView
@@ -47,18 +51,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
           setPassword('Nash@123');
           setError(null);
         }}
-        onBackToLanding={onBackToLanding}
       />
     );
   }
 
   const demoAccounts = [
-    { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive' },
-    { username: 'owner', pass: 'Admin@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board' },
-    { username: 'supervisor', pass: 'Nash@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Manufacturing' },
-    { username: 'inventory_mgr', pass: 'Nash@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Warehouse' },
-    { username: 'accountant', pass: 'Nash@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Finance' },
-    { username: 'auditor', pass: 'Nash@123', label: 'Statutory Auditor', role: 'auditor', type: 'staff', dept: 'Audit' },
+    { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive Oversight' },
+    { username: 'owner', pass: 'Admin@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board & Profitability' },
+    { username: 'supervisor', pass: 'Nash@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Floor & BOM' },
+    { username: 'inventory_mgr', pass: 'Nash@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Central Warehouse' },
+    { username: 'accountant', pass: 'Nash@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Invoicing & Receipts' },
+    { username: 'auditor', pass: 'Nash@123', label: 'Statutory Auditor', role: 'auditor', type: 'staff', dept: 'Read-Only Ledger' },
   ];
 
   const handleSelectDemo = (account: typeof demoAccounts[0]) => {
@@ -81,6 +84,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         throw new Error(res.error || 'Authentication failed');
       }
 
+      localStorage.setItem('zenlyft_auth_token', res.token);
       localStorage.setItem('zenlyft_token', res.token);
       localStorage.setItem('zenlyft_user', JSON.stringify(res.user));
       onLoginSuccess(res.user, res.token);
@@ -93,33 +97,46 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   return (
     <div className="min-h-screen bg-cream-200 flex flex-col justify-between p-4 sm:p-6 font-sans">
-      {/* Header */}
-      <header className="max-w-md w-full mx-auto flex items-center justify-between py-2">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-forest-700 text-white flex items-center justify-center font-bold text-sm">
+      {/* Clean Top Header Bar */}
+      <header className="max-w-xl w-full mx-auto flex items-center justify-between py-2">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-lg bg-forest-700 text-white flex items-center justify-center font-extrabold text-sm shadow-sm">
             Z
           </div>
           <div>
-            <h1 className="font-bold text-sm text-charcoal-900 leading-tight">ZenLyft OS</h1>
-            <span className="text-[10px] text-forest-700 font-semibold block uppercase">Enterprise Gateway</span>
+            <h1 className="font-extrabold text-sm text-charcoal-900 leading-tight">ZenLyft OS</h1>
+            <span className="text-[10px] text-forest-700 font-bold block uppercase tracking-wider">Manufacturing Platform</span>
           </div>
         </div>
 
-        {onBackToLanding && (
-          <button
-            onClick={onBackToLanding}
-            className="text-xs font-semibold text-charcoal-500 hover:text-charcoal-900 transition"
-          >
-            Public Site
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {onOpenPitch && (
+            <button
+              onClick={onOpenPitch}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 rounded-lg text-xs font-bold border border-amber-400/50 transition shadow-sm"
+            >
+              <Target className="w-3.5 h-3.5 text-amber-700" />
+              <span>Pitch Deck</span>
+            </button>
+          )}
+
+          {onOpenBenchmark && (
+            <button
+              onClick={onOpenBenchmark}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-cream-100 text-charcoal-700 rounded-lg text-xs font-bold border border-subtle-border transition shadow-sm"
+            >
+              <Play className="w-3.5 h-3.5 text-forest-700 fill-forest-700" />
+              <span className="hidden sm:inline">Section 5 Benchmark</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Main Login Card */}
       <main className="max-w-md w-full mx-auto my-auto py-6">
         <div className="bg-white rounded-2xl border border-subtle-border shadow-sm p-6 sm:p-8">
           
-          {/* Mode Switcher Tabs */}
+          {/* Distinct Login Experience Switcher */}
           <div className="grid grid-cols-3 gap-1.5 p-1 bg-cream-100 rounded-xl mb-6 border border-subtle-border">
             <button
               type="button"
@@ -165,7 +182,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>Factory Staff</span>
+              <span>Staff Login</span>
             </button>
           </div>
 
@@ -175,8 +192,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </h2>
             <p className="text-xs text-charcoal-500 mt-1">
               {loginMode === 'admin'
-                ? 'Centralized business oversight, approvals & user administration'
-                : 'Role-based access for production, inventory & financial staff'}
+                ? 'Primary business controller, approvals, GST & user administration'
+                : 'Dedicated access for floor supervisors, inventory & accounting'}
             </p>
           </div>
 
@@ -190,7 +207,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-charcoal-700 mb-1">
-                Username / Email
+                Username / Identifier
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">

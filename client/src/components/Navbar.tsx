@@ -28,7 +28,6 @@ interface NavbarProps {
   isProcessing: boolean;
   currentUser?: AppUser | null;
   onLogout?: () => void;
-  onViewLandingPage?: () => void;
   onOpenProfile?: () => void;
   isProfileActive?: boolean;
 }
@@ -44,7 +43,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   isProcessing,
   currentUser,
   onLogout,
-  onViewLandingPage,
   onOpenProfile,
   isProfileActive = false
 }) => {
@@ -72,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Identity */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={onViewLandingPage}>
+          <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-forest-900 border border-forest-600 flex items-center justify-center font-bold text-cream-50 shadow-sm">
               Z
             </div>
@@ -160,16 +158,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>Benchmark</span>
                 </button>
               </>
-            )}
-
-            {/* Public Site Link */}
-            {onViewLandingPage && (
-              <button
-                onClick={onViewLandingPage}
-                className="hidden lg:inline-block text-xs font-semibold text-forest-200 hover:text-white transition px-2 py-1"
-              >
-                Public Site
-              </button>
             )}
 
             {/* Logout */}

@@ -3,7 +3,6 @@ import { UserRole, AppUser } from './types';
 import { Navbar } from './components/Navbar';
 import { BenchmarkModal } from './components/BenchmarkModal';
 import { PitchDeckModal } from './components/PitchDeckModal';
-import { LandingPageView } from './pages/LandingPageView';
 import { LoginView } from './pages/LoginView';
 import { AdminControlCenterView } from './pages/AdminControlCenterView';
 import { SalesmanView } from './pages/SalesmanView';
@@ -84,7 +83,7 @@ export const App: React.FC = () => {
 
     let eventSource: EventSource | null = null;
     try {
-      const token = localStorage.getItem('zenlyft_auth_token') || '';
+      const token = localStorage.getItem('zenlyft_auth_token') || localStorage.getItem('zenlyft_token') || '';
       eventSource = new EventSource(`/api/realtime/events?token=${encodeURIComponent(token)}`);
 
       eventSource.onmessage = (event) => {
@@ -224,6 +223,7 @@ export const App: React.FC = () => {
       const data = await res.json();
       if (data.success && data.token) {
         localStorage.setItem('zenlyft_auth_token', data.token);
+        localStorage.setItem('zenlyft_token', data.token);
         localStorage.setItem('zenlyft_user', JSON.stringify(data.user));
         handleLoginSuccess(data.user, data.token);
       } else {
@@ -236,22 +236,16 @@ export const App: React.FC = () => {
     }
   };
 
-  // Determine which page/route to render
-  const isPublicRoute = currentPath === '/' || 
-                        currentPath === '/pitch' ||
-                        currentPath === '/features' || 
-                        currentPath === '/pricing' || 
-                        currentPath === '/contact' || 
-                        currentPath === '/register';
-
-  // 1. Public Marketing Website
-  if (isPublicRoute && !currentUser) {
+  // 1. Unauthenticated Gateway: Direct Clean Enterprise Login (No Marketing Page)
+  if (!currentUser) {
+    const params = new URLSearchParams(window.location.search);
+    const initialMode = params.get('mode') === 'salesman' ? 'salesman' :
+                        params.get('mode') === 'staff' ? 'staff' : 'admin';
     return (
-      <>
-        <LandingPageView
-          currentPath={currentPath}
-          onNavigate={navigate}
-          onEnterApp={() => navigate('/login')}
+      <div className="min-h-screen bg-cream-200">
+        <LoginView 
+          onLoginSuccess={handleLoginSuccess}
+          initialMode={initialMode}
           onOpenBenchmark={handleRunBenchmark}
           onOpenPitch={() => setIsPitchOpen(true)}
         />
@@ -265,38 +259,19 @@ export const App: React.FC = () => {
           onClose={() => setIsPitchOpen(false)}
           onRunBenchmark={handleRunBenchmark}
           onDirectLogin={handleDirectDemoLogin}
-          onSelectRole={(role) => navigate(`/app/${role}`)}
+          onSelectRole={(role) => {
+            if (role === 'admin') navigate('/admin');
+            else if (role === 'salesman') navigate('/app/sales-terminal');
+            else if (role === 'production') navigate('/app/production');
+            else if (role === 'accountant') navigate('/app/inventory');
+            else if (role === 'owner') navigate('/app/reports');
+          }}
         />
-      </>
+      </div>
     );
   }
 
-  // 2. Login Portal
-  if (currentPath === '/login' && !currentUser) {
-    const params = new URLSearchParams(window.location.search);
-    const initialMode = params.get('mode') === 'salesman' ? 'salesman' :
-                        params.get('mode') === 'staff' ? 'staff' : 'admin';
-    return (
-      <LoginView 
-        onLoginSuccess={handleLoginSuccess}
-        onBackToLanding={() => navigate('/')}
-        initialMode={initialMode}
-      />
-    );
-  }
-
-  // If unauthenticated and trying to access private /app or /admin route, redirect to login
-  if (!currentUser) {
-    return (
-      <LoginView 
-        onLoginSuccess={handleLoginSuccess}
-        onBackToLanding={() => navigate('/')}
-        initialMode="admin"
-      />
-    );
-  }
-
-  // 3. Authenticated Workplace Viewport
+  // 2. Authenticated Workplace Viewport
   const isProfileActive = currentPath === '/app/profile';
 
   return (
@@ -320,7 +295,6 @@ export const App: React.FC = () => {
         isProcessing={isProcessing}
         currentUser={currentUser}
         onLogout={handleLogout}
-        onViewLandingPage={() => navigate('/')}
         onOpenProfile={() => navigate('/app/profile')}
         isProfileActive={isProfileActive}
       />
