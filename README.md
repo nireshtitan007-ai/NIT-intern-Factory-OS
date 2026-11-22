@@ -2,6 +2,8 @@
 ### Order-to-Audit Operating System for Small Food Manufacturers
 **Centre for Digital Infrastructure — NIT Tiruchirappalli Internship Evaluation**
 
+[![CI](https://github.com/nireshtitan007-ai/NIT-intern-Factory-OS/actions/workflows/ci.yml/badge.svg)](https://github.com/nireshtitan007-ai/NIT-intern-Factory-OS/actions/workflows/ci.yml)
+
 ---
 
 ## 1. Executive Summary
@@ -22,8 +24,8 @@ ZenLyft features a built-in in-memory database engine fallback, allowing the ent
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/niresh07/ZenLyft-Manufacturing-OS.git
-cd "ZenLyft-Manufacturing-OS"
+git clone https://github.com/nireshtitan007-ai/NIT-intern-Factory-OS.git
+cd "NIT-intern-Factory-OS"
 
 # 2. Server setup (Node 18+ required)
 cd server
