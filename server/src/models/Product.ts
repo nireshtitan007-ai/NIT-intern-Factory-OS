@@ -10,6 +10,7 @@ export interface IProduct extends Document {
   sellingPricePaise?: number; // in paise e.g. 5000
   gstRate: number; // in percentage e.g. 5
   hsnCode: string; // e.g. '19059040'
+  packetsPerCarton?: number; // e.g. 20 packets per carton
   currentStock: number; // packets
   openingStock: number;
   createdAt: Date;
@@ -25,6 +26,7 @@ const ProductSchema = new Schema<IProduct>({
   sellingPricePaise: { type: Number, default: 0 },
   gstRate: { type: Number, default: 5 },
   hsnCode: { type: String, default: '19059040' },
+  packetsPerCarton: { type: Number, default: 20 },
   currentStock: { type: Number, default: 0 },
   openingStock: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }

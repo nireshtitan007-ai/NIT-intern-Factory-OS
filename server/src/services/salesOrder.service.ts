@@ -19,6 +19,7 @@ import {
   calculateGSTPaise, 
   validatePaymentPaise 
 } from '../utils/money';
+import { convert } from '../utils/units';
 
 export interface CreateOrderParams {
   tenantId?: string;
@@ -30,6 +31,7 @@ export interface CreateOrderParams {
     productCode: string;
     quantity: number;
     unitPrice?: number;
+    unit?: string;
   }>;
   offlineSyncId?: string;
   notes?: string;
@@ -69,25 +71,31 @@ export class SalesOrderService {
       
       if (!product) throw new Error(`Product with code ${item.productCode} not found`);
 
+      let quantityInPackets = item.quantity;
+      const packetsPerCarton = product.packetsPerCarton || 20;
+      if (item.unit && (item.unit.toLowerCase().startsWith('carton') || item.unit.toLowerCase().startsWith('box'))) {
+        quantityInPackets = convert(item.quantity, 'carton', 'packet', { packetsPerCarton });
+      }
+
       const unitPrice = item.unitPrice !== undefined ? item.unitPrice : product.sellingPrice;
       const unitPricePaise = rupeesToPaise(unitPrice);
-      const lineTotalPaise = item.quantity * unitPricePaise;
+      const lineTotalPaise = quantityInPackets * unitPricePaise;
       const lineTotal = paiseToRupees(lineTotalPaise);
       totalAmountPaise += lineTotalPaise;
 
       const availableStock = product.currentStock;
       if (availableStock < minAvailableStock) minAvailableStock = availableStock;
 
-      if (availableStock < item.quantity) {
+      if (availableStock < quantityInPackets) {
         isSufficient = false;
-        totalShortage += (item.quantity - availableStock);
+        totalShortage += (quantityInPackets - availableStock);
       }
 
       orderItems.push({
         productId: product._id,
         productCode: product.code,
         productName: product.name,
-        quantity: item.quantity,
+        quantity: quantityInPackets,
         unitPrice,
         unitPricePaise,
         lineTotal,

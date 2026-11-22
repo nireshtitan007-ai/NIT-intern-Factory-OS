@@ -7,6 +7,7 @@ import {
   mulQtyRate, 
   computeWAC 
 } from '../utils/money';
+import { convert } from '../utils/units';
 
 export interface CreatePurchaseParams {
   tenantId?: string;
@@ -15,6 +16,7 @@ export interface CreatePurchaseParams {
     materialCode: string;
     quantity: number;
     rate: number;
+    unit?: string;
   }>;
   notes?: string;
   date?: Date;
@@ -47,8 +49,16 @@ export class PurchaseService {
         throw new Error(`Material with code ${item.materialCode} not found`);
       }
 
+      const enteredUnit = item.unit || material.unit;
+      const baseQuantity = enteredUnit.toLowerCase() !== material.unit.toLowerCase()
+        ? convert(item.quantity, enteredUnit, material.unit)
+        : item.quantity;
+      const conversionNote = enteredUnit.toLowerCase() !== material.unit.toLowerCase()
+        ? ` (Entered as ${item.quantity} ${enteredUnit})`
+        : '';
+
       const ratePaise = rupeesToPaise(item.rate);
-      const lineTotalPaise = Math.round(item.quantity * ratePaise);
+      const lineTotalPaise = mulQtyRate(baseQuantity, ratePaise);
       const lineTotal = paiseToRupees(lineTotalPaise);
       grandTotalPaise += lineTotalPaise;
 
@@ -56,7 +66,7 @@ export class PurchaseService {
         materialId: material._id,
         materialCode: material.code,
         materialName: material.name,
-        quantity: item.quantity,
+        quantity: baseQuantity,
         unit: material.unit,
         rate: item.rate,
         ratePaise,
@@ -69,7 +79,7 @@ export class PurchaseService {
       const oldRatePaise = material.currentWeightedRatePaise || rupeesToPaise(material.currentWeightedRate || material.standardRate);
       const oldValuePaise = material.totalValuePaise || Math.round(oldStock * oldRatePaise);
 
-      const wac = computeWAC(oldStock, oldValuePaise, item.quantity, ratePaise);
+      const wac = computeWAC(oldStock, oldValuePaise, baseQuantity, ratePaise);
 
       material.totalValuePaise = wac.totalValuePaise;
       material.currentWeightedRate = wac.rateRupeesPerUnit;
@@ -86,13 +96,13 @@ export class PurchaseService {
         itemCode: material.code,
         itemName: material.name,
         movementType: 'PURCHASE_RECEIPT',
-        quantity: item.quantity,
+        quantity: baseQuantity,
         unit: material.unit,
         unitCost: item.rate,
         sourceDocType: 'PURCHASE',
         sourceDocId: purchaseNumber,
-        notes: `Purchase from ${params.supplierName} (${purchaseNumber})`,
-        createdBy: params.createdBy || 'PURCHASE_MANAGER'
+        notes: `Purchase from ${params.supplierName} (${purchaseNumber})${conversionNote}`,
+        createdBy: params.createdBy || 'Purchase Manager'
       });
     }
 

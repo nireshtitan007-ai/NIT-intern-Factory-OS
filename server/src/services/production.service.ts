@@ -11,6 +11,7 @@ import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
 import { RealtimeService } from './realtime.service';
 import { rupeesToPaise, paiseToRupees } from '../utils/money';
+import { convert } from '../utils/units';
 
 export interface ExecuteProductionRunParams {
   tenantId?: string;
@@ -19,6 +20,7 @@ export interface ExecuteProductionRunParams {
   materialIssues: Array<{
     materialCode: string;
     actualQtyIssued: number;
+    unit?: string;
   }>;
   actualOutputPackets: number; // e.g. 188
   damagedPouches?: number; // e.g. 6
@@ -68,9 +70,9 @@ export class ProductionService {
     let totalMaterialCostPaise = 0;
 
     // Map input issues by code
-    const issueMap = new Map<string, number>();
+    const issueMap = new Map<string, { qty: number; unit?: string }>();
     for (const item of params.materialIssues) {
-      issueMap.set(item.materialCode.toUpperCase(), item.actualQtyIssued);
+      issueMap.set(item.materialCode.toUpperCase(), { qty: item.actualQtyIssued, unit: item.unit });
     }
 
     // Process Raw Materials from BOM
@@ -80,7 +82,18 @@ export class ProductionService {
 
       const code = rawMaterial.code.toUpperCase();
       const standardQty = bomRaw.quantityPerBatch;
-      const actualQty = issueMap.has(code) ? (issueMap.get(code) as number) : standardQty;
+      let actualQty = standardQty;
+      let conversionNote = '';
+
+      if (issueMap.has(code)) {
+        const entry = issueMap.get(code)!;
+        if (entry.unit && entry.unit.toLowerCase() !== rawMaterial.unit.toLowerCase()) {
+          actualQty = convert(entry.qty, entry.unit, rawMaterial.unit);
+          conversionNote = ` (Entered as ${entry.qty} ${entry.unit})`;
+        } else {
+          actualQty = entry.qty;
+        }
+      }
 
       const varianceQty = Math.round((actualQty - standardQty) * 1000) / 1000;
       const variancePercent = Math.round(((actualQty - standardQty) / standardQty) * 10000) / 100;
@@ -121,7 +134,7 @@ export class ProductionService {
         unitCost,
         sourceDocType: 'PRODUCTION_RUN',
         sourceDocId: runNumber,
-        notes: `Production Run ${runNumber} issue for ${product.name}`,
+        notes: `Production Run ${runNumber} issue for ${product.name}${conversionNote}`,
         createdBy: params.supervisorName || 'SUPERVISOR'
       });
     }
