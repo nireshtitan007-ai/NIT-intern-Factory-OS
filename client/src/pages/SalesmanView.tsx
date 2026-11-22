@@ -77,6 +77,17 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
     loadData();
   }, [isOffline]);
 
+  // Automatic sync when device network reconnects
+  useEffect(() => {
+    const handleOnline = () => {
+      if (!isOffline) {
+        handleSyncPendingOrders();
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [isOffline]);
+
   useEffect(() => {
     if (customers.length > 0 && !selectedCustomerId) {
       setSelectedCustomerId(customers[0]._id);
