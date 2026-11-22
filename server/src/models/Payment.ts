@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { integerPaiseValidator } from '../utils/money';
+import { integerPaiseValidator, paiseToRupees } from '../utils/money';
 
 export interface IPayment extends Document {
   tenantId: string;
@@ -26,18 +26,30 @@ const PaymentSchema = new Schema<IPayment>({
   customerName: { type: String, required: true },
   invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true, index: true },
   invoiceNumber: { type: String, required: true },
-  amount: { type: Number, required: true },
   amountPaise: { type: Number, required: true, validate: integerPaiseValidator },
   paymentMethod: { type: String, default: 'BANK_TRANSFER' },
   reference: { type: String },
   date: { type: Date, default: Date.now },
   notes: { type: String },
   createdAt: { type: Date, default: Date.now }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-PaymentSchema.pre('save', function (next) {
-  if (!this.amountPaise && this.amount) {
-    this.amountPaise = Math.round(this.amount * 100);
+PaymentSchema.virtual('amount')
+  .get(function () {
+    return paiseToRupees(this.amountPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.amountPaise = Math.round(val * 100);
+    }
+  });
+
+PaymentSchema.pre('validate', function (next) {
+  if (this.amountPaise === undefined && (this as any).amount !== undefined) {
+    this.amountPaise = Math.round((this as any).amount * 100);
   }
   next();
 });

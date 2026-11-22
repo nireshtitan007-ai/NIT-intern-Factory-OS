@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { integerPaiseValidator } from '../utils/money';
+import { integerPaiseValidator, paiseToRupees } from '../utils/money';
 
 export type StockItemType = 'RAW_MATERIAL' | 'PACKAGING' | 'FINISHED_GOOD';
 export type StockMovementType = 
@@ -61,9 +61,7 @@ const StockMovementSchema = new Schema<IStockMovement>({
   },
   quantity: { type: Number, required: true },
   unit: { type: String, required: true },
-  unitCost: { type: Number, default: 0 },
   unitCostPaise: { type: Number, default: 0 },
-  totalCost: { type: Number, default: 0 },
   totalCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   sourceDocType: { 
     type: String, 
@@ -77,18 +75,37 @@ const StockMovementSchema = new Schema<IStockMovement>({
   notes: { type: String },
   createdBy: { type: String, default: 'SYSTEM' },
   createdAt: { type: Date, default: Date.now, index: true }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
+
+StockMovementSchema.virtual('unitCost')
+  .get(function () {
+    return paiseToRupees(this.unitCostPaise || 0);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.unitCostPaise = val * 100;
+  });
+
+StockMovementSchema.virtual('totalCost')
+  .get(function () {
+    return paiseToRupees(this.totalCostPaise || 0);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.totalCostPaise = Math.round(val * 100);
+  });
 
 // Enforce strict ledger immutability
 StockMovementSchema.pre('save', function (next) {
   if (!this.isNew) {
     return next(new Error('IMMUTABLE_LEDGER_VIOLATION: Existing StockMovement records cannot be modified.'));
   }
-  if (!this.unitCostPaise && this.unitCost) {
-    this.unitCostPaise = Math.round(this.unitCost * 100);
+  if (!this.unitCostPaise && (this as any).unitCost) {
+    this.unitCostPaise = Math.round((this as any).unitCost * 100);
   }
-  if (!this.totalCostPaise && this.totalCost) {
-    this.totalCostPaise = Math.round(this.totalCost * 100);
+  if (!this.totalCostPaise && (this as any).totalCost) {
+    this.totalCostPaise = Math.round((this as any).totalCost * 100);
   }
   next();
 });

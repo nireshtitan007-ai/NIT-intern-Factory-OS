@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { integerPaiseValidator } from '../utils/money';
+import { integerPaiseValidator, paiseToRupees } from '../utils/money';
 
 export type OrderStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'INVOICED' | 'DISPATCHED';
 
@@ -9,9 +9,9 @@ export interface ISalesOrderItem {
   productName: string;
   quantity: number;
   unitPrice: number;
-  unitPricePaise?: number;
+  unitPricePaise: number;
   lineTotal: number;
-  lineTotalPaise?: number;
+  lineTotalPaise: number;
 }
 
 export interface ISalesOrder extends Document {
@@ -26,7 +26,7 @@ export interface ISalesOrder extends Document {
   customerStateCode: string;
   items: ISalesOrderItem[];
   totalAmount: number;
-  totalAmountPaise?: number;
+  totalAmountPaise: number;
   status: OrderStatus;
   offlineSyncId?: string;
   stockCheck: {
@@ -58,11 +58,33 @@ const SalesOrderItemSchema = new Schema<ISalesOrderItem>({
   productCode: { type: String, required: true },
   productName: { type: String, required: true },
   quantity: { type: Number, required: true },
-  unitPrice: { type: Number, required: true },
-  unitPricePaise: { type: Number, default: 0, validate: integerPaiseValidator },
-  lineTotal: { type: Number, required: true },
-  lineTotalPaise: { type: Number, default: 0, validate: integerPaiseValidator }
-}, { _id: false });
+  unitPricePaise: { type: Number, required: true, validate: integerPaiseValidator },
+  lineTotalPaise: { type: Number, required: true, validate: integerPaiseValidator }
+}, { 
+  _id: false,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+SalesOrderItemSchema.virtual('unitPrice')
+  .get(function () {
+    return paiseToRupees(this.unitPricePaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.unitPricePaise = Math.round(val * 100);
+    }
+  });
+
+SalesOrderItemSchema.virtual('lineTotal')
+  .get(function () {
+    return paiseToRupees(this.lineTotalPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.lineTotalPaise = Math.round(val * 100);
+    }
+  });
 
 const SalesOrderSchema = new Schema<ISalesOrder>({
   tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
@@ -75,8 +97,7 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
   customerState: { type: String, required: true },
   customerStateCode: { type: String, required: true },
   items: [SalesOrderItemSchema],
-  totalAmount: { type: Number, required: true },
-  totalAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  totalAmountPaise: { type: Number, required: true, validate: integerPaiseValidator },
   status: { 
     type: String, 
     required: true, 
@@ -95,11 +116,38 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
   invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
   checkIn: { type: CheckInSchema, default: undefined },
   createdAt: { type: Date, default: Date.now, index: true }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-SalesOrderSchema.pre('save', function (next) {
-  if (!this.totalAmountPaise && this.totalAmount) {
-    this.totalAmountPaise = Math.round(this.totalAmount * 100);
+SalesOrderSchema.virtual('totalAmount')
+  .get(function () {
+    return paiseToRupees(this.totalAmountPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.totalAmountPaise = Math.round(val * 100);
+    }
+  });
+
+SalesOrderSchema.pre('validate', function (next) {
+  if (this.items && Array.isArray(this.items)) {
+    for (const item of this.items as any[]) {
+      if (item.unitPricePaise === undefined && item.unitPrice !== undefined) {
+        item.unitPricePaise = Math.round(item.unitPrice * 100);
+      }
+      if (item.lineTotalPaise === undefined && item.lineTotal !== undefined) {
+        item.lineTotalPaise = Math.round(item.lineTotal * 100);
+      } else if (item.lineTotalPaise === undefined && item.quantity && item.unitPricePaise) {
+        item.lineTotalPaise = Math.round(item.quantity * item.unitPricePaise);
+      }
+    }
+  }
+  if (this.totalAmountPaise === undefined && (this as any).totalAmount !== undefined) {
+    this.totalAmountPaise = Math.round((this as any).totalAmount * 100);
+  } else if (this.totalAmountPaise === undefined && this.items && Array.isArray(this.items)) {
+    this.totalAmountPaise = this.items.reduce((s: number, it: any) => s + (it.lineTotalPaise || 0), 0);
   }
   next();
 });

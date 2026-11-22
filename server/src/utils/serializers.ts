@@ -209,4 +209,27 @@ export class Serializers {
       totalAmount: paiseToRupees(totalAmountPaise)
     };
   }
+
+  static serializeCreditNote(doc: any) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject({ virtuals: true }) : { ...doc };
+    const taxableValuePaise = obj.taxableValuePaise ?? Math.round((obj.taxableValue || 0) * 100);
+    const cgstTotalPaise = obj.cgstTotalPaise ?? Math.round((obj.cgstTotal || 0) * 100);
+    const sgstTotalPaise = obj.sgstTotalPaise ?? Math.round((obj.sgstTotal || 0) * 100);
+    const igstTotalPaise = obj.igstTotalPaise ?? Math.round((obj.igstTotal || 0) * 100);
+    const grandTotalPaise = obj.grandTotalPaise ?? Math.round((obj.grandTotal || 0) * 100);
+    return {
+      ...obj,
+      taxableValuePaise,
+      taxableValue: paiseToRupees(taxableValuePaise),
+      cgstTotalPaise,
+      cgstTotal: paiseToRupees(cgstTotalPaise),
+      sgstTotalPaise,
+      sgstTotal: paiseToRupees(sgstTotalPaise),
+      igstTotalPaise,
+      igstTotal: paiseToRupees(igstTotalPaise),
+      grandTotalPaise,
+      grandTotal: paiseToRupees(grandTotalPaise)
+    };
+  }
 }

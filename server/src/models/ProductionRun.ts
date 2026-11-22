@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { integerPaiseValidator } from '../utils/money';
+import { integerPaiseValidator, paiseToRupees } from '../utils/money';
 
 export interface IIssuedMaterial {
   materialId: Types.ObjectId;
@@ -11,7 +11,7 @@ export interface IIssuedMaterial {
   unitCost: number;
   unitCostPaise?: number;
   totalCost: number;
-  totalCostPaise?: number;
+  totalCostPaise: number;
   varianceQty: number; // actual - standard
   variancePercent: number; // ((actual - standard) / standard) * 100
   varianceFlagged: boolean;
@@ -32,15 +32,15 @@ export interface IProductionRun extends Document {
   yieldVarianceFlagged: boolean;
   materialsIssued: IIssuedMaterial[];
   directLaborCost: number; // e.g. 1200
-  directLaborCostPaise?: number;
+  directLaborCostPaise: number;
   directOverheadCost: number; // e.g. 600
-  directOverheadCostPaise?: number;
+  directOverheadCostPaise: number;
   totalMaterialCost: number;
-  totalMaterialCostPaise?: number;
+  totalMaterialCostPaise: number;
   totalProductionCost: number;
-  totalProductionCostPaise?: number;
+  totalProductionCostPaise: number;
   costPerPacket: number;
-  costPerPacketPaise?: number;
+  costPerPacketPaise: number;
   supervisorName: string;
   notes?: string;
   status: 'COMPLETED';
@@ -54,14 +54,36 @@ const IssuedMaterialSchema = new Schema<IIssuedMaterial>({
   standardQty: { type: Number, required: true },
   actualQtyIssued: { type: Number, required: true },
   unit: { type: String, required: true },
-  unitCost: { type: Number, required: true },
   unitCostPaise: { type: Number, default: 0 },
-  totalCost: { type: Number, required: true },
-  totalCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  totalCostPaise: { type: Number, required: true, validate: integerPaiseValidator },
   varianceQty: { type: Number, required: true },
   variancePercent: { type: Number, required: true },
   varianceFlagged: { type: Boolean, default: false }
-}, { _id: false });
+}, { 
+  _id: false,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+IssuedMaterialSchema.virtual('unitCost')
+  .get(function () {
+    return paiseToRupees(this.unitCostPaise || 0);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.unitCostPaise = val * 100;
+    }
+  });
+
+IssuedMaterialSchema.virtual('totalCost')
+  .get(function () {
+    return paiseToRupees(this.totalCostPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.totalCostPaise = Math.round(val * 100);
+    }
+  });
 
 const ProductionRunSchema = new Schema<IProductionRun>({
   tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
@@ -77,28 +99,86 @@ const ProductionRunSchema = new Schema<IProductionRun>({
   yieldVariancePercent: { type: Number, required: true },
   yieldVarianceFlagged: { type: Boolean, default: false },
   materialsIssued: [IssuedMaterialSchema],
-  directLaborCost: { type: Number, default: 0 },
   directLaborCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
-  directOverheadCost: { type: Number, default: 0 },
   directOverheadCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
-  totalMaterialCost: { type: Number, required: true },
-  totalMaterialCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
-  totalProductionCost: { type: Number, required: true },
-  totalProductionCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
-  costPerPacket: { type: Number, required: true },
+  totalMaterialCostPaise: { type: Number, required: true, validate: integerPaiseValidator },
+  totalProductionCostPaise: { type: Number, required: true, validate: integerPaiseValidator },
   costPerPacketPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   supervisorName: { type: String, required: true },
   notes: { type: String },
   status: { type: String, default: 'COMPLETED' },
   createdAt: { type: Date, default: Date.now, index: true }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-ProductionRunSchema.pre('save', function (next) {
-  if (!this.directLaborCostPaise && this.directLaborCost) this.directLaborCostPaise = Math.round(this.directLaborCost * 100);
-  if (!this.directOverheadCostPaise && this.directOverheadCost) this.directOverheadCostPaise = Math.round(this.directOverheadCost * 100);
-  if (!this.totalMaterialCostPaise && this.totalMaterialCost) this.totalMaterialCostPaise = Math.round(this.totalMaterialCost * 100);
-  if (!this.totalProductionCostPaise && this.totalProductionCost) this.totalProductionCostPaise = Math.round(this.totalProductionCost * 100);
-  if (!this.costPerPacketPaise && this.costPerPacket) this.costPerPacketPaise = Math.round(this.costPerPacket * 100);
+ProductionRunSchema.virtual('directLaborCost')
+  .get(function () {
+    return paiseToRupees(this.directLaborCostPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.directLaborCostPaise = Math.round(val * 100);
+  });
+
+ProductionRunSchema.virtual('directOverheadCost')
+  .get(function () {
+    return paiseToRupees(this.directOverheadCostPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.directOverheadCostPaise = Math.round(val * 100);
+  });
+
+ProductionRunSchema.virtual('totalMaterialCost')
+  .get(function () {
+    return paiseToRupees(this.totalMaterialCostPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.totalMaterialCostPaise = Math.round(val * 100);
+  });
+
+ProductionRunSchema.virtual('totalProductionCost')
+  .get(function () {
+    return paiseToRupees(this.totalProductionCostPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.totalProductionCostPaise = Math.round(val * 100);
+  });
+
+ProductionRunSchema.virtual('costPerPacket')
+  .get(function () {
+    return paiseToRupees(this.costPerPacketPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) this.costPerPacketPaise = Math.round(val * 100);
+  });
+
+ProductionRunSchema.pre('validate', function (next) {
+  if (this.materialsIssued && Array.isArray(this.materialsIssued)) {
+    for (const item of this.materialsIssued as any[]) {
+      if (item.unitCostPaise === undefined && item.unitCost !== undefined) {
+        item.unitCostPaise = Math.round(item.unitCost * 100);
+      }
+      if (item.totalCostPaise === undefined && item.totalCost !== undefined) {
+        item.totalCostPaise = Math.round(item.totalCost * 100);
+      }
+    }
+  }
+  if (this.directLaborCostPaise === undefined && (this as any).directLaborCost !== undefined) {
+    this.directLaborCostPaise = Math.round((this as any).directLaborCost * 100);
+  }
+  if (this.directOverheadCostPaise === undefined && (this as any).directOverheadCost !== undefined) {
+    this.directOverheadCostPaise = Math.round((this as any).directOverheadCost * 100);
+  }
+  if (this.totalMaterialCostPaise === undefined && (this as any).totalMaterialCost !== undefined) {
+    this.totalMaterialCostPaise = Math.round((this as any).totalMaterialCost * 100);
+  }
+  if (this.totalProductionCostPaise === undefined && (this as any).totalProductionCost !== undefined) {
+    this.totalProductionCostPaise = Math.round((this as any).totalProductionCost * 100);
+  }
+  if (this.costPerPacketPaise === undefined && (this as any).costPerPacket !== undefined) {
+    this.costPerPacketPaise = Math.round((this as any).costPerPacket * 100);
+  }
   next();
 });
 

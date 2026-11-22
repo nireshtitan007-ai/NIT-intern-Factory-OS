@@ -1,5 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
-import { integerPaiseValidator } from '../utils/money';
+import { integerPaiseValidator, paiseToRupees } from '../utils/money';
 
 export interface IProduct extends Document {
   tenantId: string;
@@ -8,7 +8,7 @@ export interface IProduct extends Document {
   packSize: string; // e.g., '200g'
   unit: string; // 'packet'
   sellingPrice: number; // in INR (before tax) e.g. 50
-  sellingPricePaise?: number; // in paise e.g. 5000
+  sellingPricePaise: number; // in paise e.g. 5000
   gstRate: number; // in percentage e.g. 5
   hsnCode: string; // e.g. '19059040'
   packetsPerCarton?: number; // e.g. 20 packets per carton
@@ -25,8 +25,7 @@ const ProductSchema = new Schema<IProduct>({
   name: { type: String, required: true },
   packSize: { type: String, required: true },
   unit: { type: String, default: 'packet' },
-  sellingPrice: { type: Number, required: true },
-  sellingPricePaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  sellingPricePaise: { type: Number, required: true, validate: integerPaiseValidator },
   gstRate: { type: Number, default: 5 },
   hsnCode: { type: String, default: '19059040' },
   packetsPerCarton: { type: Number, default: 20 },
@@ -35,13 +34,26 @@ const ProductSchema = new Schema<IProduct>({
   openingStock: { type: Number, default: 0 },
   active: { type: Boolean, default: true, index: true },
   createdAt: { type: Date, default: Date.now }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 ProductSchema.index({ tenantId: 1, code: 1 }, { unique: true });
 
-ProductSchema.pre('save', function (next) {
-  if (!this.sellingPricePaise && this.sellingPrice) {
-    this.sellingPricePaise = Math.round(this.sellingPrice * 100);
+ProductSchema.virtual('sellingPrice')
+  .get(function () {
+    return paiseToRupees(this.sellingPricePaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.sellingPricePaise = Math.round(val * 100);
+    }
+  });
+
+ProductSchema.pre('validate', function (next) {
+  if (this.sellingPricePaise === undefined && (this as any).sellingPrice !== undefined) {
+    this.sellingPricePaise = Math.round((this as any).sellingPrice * 100);
   }
   next();
 });

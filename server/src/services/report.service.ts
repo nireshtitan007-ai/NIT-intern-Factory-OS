@@ -1,5 +1,6 @@
 import { Invoice, Payment, Purchase, ProductionRun, Customer, Product, RawMaterial, CreditNote, StockMovement } from '../models';
 import { StockLedgerService } from './stockLedger.service';
+import { Serializers } from '../utils/serializers';
 
 export class ReportService {
   /**
@@ -14,7 +15,8 @@ export class ReportService {
       if (endDate) query.createdAt.$lte = endDate;
     }
 
-    const invoices = await Invoice.find(query).sort({ createdAt: -1 }).lean();
+    const rawInvoices = await Invoice.find(query).sort({ createdAt: -1 }).lean();
+    const invoices = rawInvoices.map(inv => Serializers.serializeInvoice(inv)!);
     return invoices.map(inv => ({
       invoiceNumber: inv.invoiceNumber,
       date: inv.createdAt,
@@ -47,7 +49,8 @@ export class ReportService {
       if (endDate) query.createdAt.$lte = endDate;
     }
 
-    const invoices = await Invoice.find(query).lean();
+    const rawInvoices = await Invoice.find(query).lean();
+    const invoices = rawInvoices.map(inv => Serializers.serializeInvoice(inv)!);
     const map: Record<string, any> = {};
 
     for (const inv of invoices) {
@@ -94,7 +97,8 @@ export class ReportService {
       if (endDate) query.createdAt.$lte = endDate;
     }
 
-    const invoices = await Invoice.find(query).lean();
+    const rawInvoices = await Invoice.find(query).lean();
+    const invoices = rawInvoices.map(inv => Serializers.serializeInvoice(inv)!);
     const map: Record<string, any> = {};
 
     for (const inv of invoices) {
@@ -141,8 +145,10 @@ export class ReportService {
     }
 
     const activeInvoiceQuery: any = { ...query, isCancelled: { $ne: true } };
-    const invoices = await Invoice.find(activeInvoiceQuery).lean();
-    const creditNotes = await CreditNote.find(query).lean();
+    const rawInvoices = await Invoice.find(activeInvoiceQuery).lean();
+    const invoices = rawInvoices.map(inv => Serializers.serializeInvoice(inv)!);
+    const rawCreditNotes = await CreditNote.find(query).lean();
+    const creditNotes = rawCreditNotes.map(cn => Serializers.serializeCreditNote(cn)!);
 
     let intraStateTaxable = 0;
     let intraStateCGST = 0;
@@ -283,7 +289,8 @@ export class ReportService {
       if (endDate) query.date.$lte = endDate;
     }
 
-    const purchases = await Purchase.find(query).sort({ date: -1 }).lean();
+    const rawPurchases = await Purchase.find(query).sort({ date: -1 }).lean();
+    const purchases = rawPurchases.map(p => Serializers.serializePurchase(p)!);
     return purchases.map(p => ({
       purchaseNumber: p.purchaseNumber,
       date: p.date,
@@ -306,7 +313,8 @@ export class ReportService {
       if (endDate) query.date.$lte = endDate;
     }
 
-    const payments = await Payment.find(query).sort({ date: -1 }).lean();
+    const rawPayments = await Payment.find(query).sort({ date: -1 }).lean();
+    const payments = rawPayments.map(p => Serializers.serializePayment(p)!);
     return payments.map(p => ({
       paymentNumber: p.paymentNumber,
       date: p.date,
@@ -331,7 +339,8 @@ export class ReportService {
       if (endDate) query.createdAt.$lte = endDate;
     }
 
-    const runs = await ProductionRun.find(query).sort({ createdAt: -1 }).lean();
+    const rawRuns = await ProductionRun.find(query).sort({ createdAt: -1 }).lean();
+    const runs = rawRuns.map(r => Serializers.serializeProductionRun(r)!);
     return runs.map(run => {
       const margin = 50 - (run.costPerPacket || 0); // standard Murukku selling price ₹50
       const marginPercent = Math.round((margin / 50) * 10000) / 100;
@@ -361,11 +370,13 @@ export class ReportService {
    */
   static async getOutstandingReceivables(tenantId?: string) {
     const custFilter = tenantId ? { tenantId } : {};
-    const invFilter: any = { balanceDue: { $gt: 0 }, isCancelled: { $ne: true } };
+    const invFilter: any = { balanceDuePaise: { $gt: 0 }, isCancelled: { $ne: true } };
     if (tenantId) invFilter.tenantId = tenantId;
 
-    const customers = await Customer.find(custFilter).lean();
-    const unpaidInvoices = await Invoice.find(invFilter).lean();
+    const rawCustomers = await Customer.find(custFilter).lean();
+    const customers = rawCustomers.map(c => Serializers.serializeCustomer(c)!);
+    const rawUnpaidInvoices = await Invoice.find(invFilter).lean();
+    const unpaidInvoices = rawUnpaidInvoices.map(inv => Serializers.serializeInvoice(inv)!);
 
     const now = new Date();
     const customerMap: Record<string, any> = {};
@@ -416,7 +427,8 @@ export class ReportService {
     const query: any = { tenantId: tid };
     if (itemId) query.itemId = itemId;
 
-    const allMovements = await StockMovement.find(query).sort({ createdAt: 1 }).lean();
+    const rawMovements = await StockMovement.find(query).sort({ createdAt: 1 }).lean();
+    const allMovements = rawMovements.map(m => Serializers.serializeStockMovement(m)!);
 
     let openingBalance = 0;
     const inRangeMovements: any[] = [];

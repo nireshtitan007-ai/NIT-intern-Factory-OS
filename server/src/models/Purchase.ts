@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { integerPaiseValidator } from '../utils/money';
+import { integerPaiseValidator, paiseToRupees } from '../utils/money';
 
 export interface IPurchaseItem {
   materialId: Types.ObjectId;
@@ -8,9 +8,9 @@ export interface IPurchaseItem {
   quantity: number;
   unit: string;
   rate: number;
-  ratePaise?: number;
+  ratePaise: number;
   total: number;
-  totalPaise?: number;
+  totalPaise: number;
 }
 
 export interface IPurchase extends Document {
@@ -20,7 +20,7 @@ export interface IPurchase extends Document {
   supplierName: string;
   items: IPurchaseItem[];
   totalAmount: number;
-  totalAmountPaise?: number;
+  totalAmountPaise: number;
   status: 'RECEIVED';
   notes?: string;
   date: Date;
@@ -33,11 +33,33 @@ const PurchaseItemSchema = new Schema<IPurchaseItem>({
   materialName: { type: String, required: true },
   quantity: { type: Number, required: true },
   unit: { type: String, required: true },
-  rate: { type: Number, required: true },
-  ratePaise: { type: Number, default: 0, validate: integerPaiseValidator },
-  total: { type: Number, required: true },
-  totalPaise: { type: Number, default: 0, validate: integerPaiseValidator }
-}, { _id: false });
+  ratePaise: { type: Number, required: true, validate: integerPaiseValidator },
+  totalPaise: { type: Number, required: true, validate: integerPaiseValidator }
+}, { 
+  _id: false,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+PurchaseItemSchema.virtual('rate')
+  .get(function () {
+    return paiseToRupees(this.ratePaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.ratePaise = Math.round(val * 100);
+    }
+  });
+
+PurchaseItemSchema.virtual('total')
+  .get(function () {
+    return paiseToRupees(this.totalPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.totalPaise = Math.round(val * 100);
+    }
+  });
 
 const PurchaseSchema = new Schema<IPurchase>({
   tenantId: { type: String, required: true, default: () => process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT', index: true },
@@ -45,17 +67,41 @@ const PurchaseSchema = new Schema<IPurchase>({
   supplierId: { type: Schema.Types.ObjectId, ref: 'Supplier' },
   supplierName: { type: String, required: true },
   items: [PurchaseItemSchema],
-  totalAmount: { type: Number, required: true },
-  totalAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  totalAmountPaise: { type: Number, required: true, validate: integerPaiseValidator },
   status: { type: String, default: 'RECEIVED' },
   notes: { type: String },
   date: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-PurchaseSchema.pre('save', function (next) {
-  if (!this.totalAmountPaise && this.totalAmount) {
-    this.totalAmountPaise = Math.round(this.totalAmount * 100);
+PurchaseSchema.virtual('totalAmount')
+  .get(function () {
+    return paiseToRupees(this.totalAmountPaise);
+  })
+  .set(function (val: number) {
+    if (val !== undefined && val !== null) {
+      this.totalAmountPaise = Math.round(val * 100);
+    }
+  });
+
+PurchaseSchema.pre('validate', function (next) {
+  if (this.items && Array.isArray(this.items)) {
+    for (const item of this.items as any[]) {
+      if (item.ratePaise === undefined && item.rate !== undefined) {
+        item.ratePaise = Math.round(item.rate * 100);
+      }
+      if (item.totalPaise === undefined && item.total !== undefined) {
+        item.totalPaise = Math.round(item.total * 100);
+      } else if (item.totalPaise === undefined && item.quantity && item.ratePaise) {
+        item.totalPaise = Math.round(item.quantity * item.ratePaise);
+      }
+    }
+  }
+  if (this.totalAmountPaise === undefined && (this as any).totalAmount !== undefined) {
+    this.totalAmountPaise = Math.round((this as any).totalAmount * 100);
   }
   next();
 });

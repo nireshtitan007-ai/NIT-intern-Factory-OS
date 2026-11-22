@@ -82,9 +82,6 @@ export class PurchaseService {
       const wac = computeWAC(oldStock, oldValuePaise, baseQuantity, ratePaise);
 
       material.totalValuePaise = wac.totalValuePaise;
-      material.currentWeightedRate = wac.rateRupeesPerUnit;
-      material.currentWeightedRatePaise = wac.ratePaisePerUnit;
-      material.standardRate = item.rate;
       material.standardRatePaise = ratePaise;
       await material.save();
 
