@@ -331,8 +331,8 @@ export class SalesOrderService {
 
     const tenantId = order.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
     const settings = await (Settings as any).getSettings(tenantId);
-    const factoryState = settings.stateName || 'Tamil Nadu';
-    const factoryStateCode = settings.stateCode || '33';
+    const factoryState = settings.stateName || process.env.FACTORY_STATE || 'Tamil Nadu';
+    const factoryStateCode = settings.stateCode || process.env.FACTORY_STATE_CODE || '33';
 
     // State check supports both state code (e.g. '33' vs '29') and state name comparison
     const isInterState = customer.stateCode 

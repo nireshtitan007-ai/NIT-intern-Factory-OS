@@ -29,7 +29,7 @@ describe('Step 4: Mock NIC e-Invoice Schema v1.1 Export & Deterministic IRN Suit
     // Authenticate Auditor
     const auditorRes = await request(app)
       .post('/api/auth/login')
-      .send({ username: 'auditor', password: 'Nash@123' });
+      .send({ username: 'auditor', password: 'ZenLyft@123' });
     expect(auditorRes.status).toBe(200);
     auditorToken = auditorRes.body.token;
 

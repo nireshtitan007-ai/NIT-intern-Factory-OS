@@ -20,7 +20,7 @@ describe('Step 2: Salesman Field GPS Check-In Acceptance Suite', () => {
     // Authenticate Salesman A
     const salesmanRes = await request(app)
       .post('/api/auth/salesman-mobile-login')
-      .send({ username: 'salesman_a', password: 'Nash@123', routeTerritory: 'Tamil Nadu Field' });
+      .send({ username: 'salesman_a', password: 'ZenLyft@123', routeTerritory: 'Tamil Nadu Field' });
     expect(salesmanRes.status).toBe(200);
     salesmanToken = salesmanRes.body.token;
 

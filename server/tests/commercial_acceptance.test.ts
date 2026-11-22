@@ -39,7 +39,7 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
     // 2. Authenticate Salesman via Dedicated Mobile Terminal
     const salesmanRes = await request(app)
       .post('/api/auth/salesman-mobile-login')
-      .send({ username: 'salesman_a', password: 'Nash@123', routeTerritory: 'Tamil Nadu Field' });
+      .send({ username: 'salesman_a', password: 'ZenLyft@123', routeTerritory: 'Tamil Nadu Field' });
     expect(salesmanRes.status).toBe(200);
     expect(salesmanRes.body.success).toBe(true);
     expect(salesmanRes.body.isMobileSession).toBe(true);
@@ -83,7 +83,7 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
     // A. Attempting Admin Login with salesman credentials
     const adminLoginAttempt = await request(app)
       .post('/api/auth/admin-login')
-      .send({ username: 'salesman_a', password: 'Nash@123' });
+      .send({ username: 'salesman_a', password: 'ZenLyft@123' });
     expect(adminLoginAttempt.status).toBe(403);
     expect(adminLoginAttempt.body.success).toBe(false);
     expect(adminLoginAttempt.body.error).toContain('not authorized to access the Admin Control Centre');

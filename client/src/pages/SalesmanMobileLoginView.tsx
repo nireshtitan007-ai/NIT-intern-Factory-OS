@@ -25,14 +25,14 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
   onSwitchToStaff
 }) => {
   const [username, setUsername] = useState('salesman_a');
-  const [password, setPassword] = useState('Nash@123');
+  const [password, setPassword] = useState('ZenLyft@123');
   const [territory, setTerritory] = useState('Tamil Nadu Field');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleQuickSelect = (u: string, t: string) => {
     setUsername(u);
-    setPassword('Nash@123');
+    setPassword('ZenLyft@123');
     setTerritory(t);
     setError(null);
   };

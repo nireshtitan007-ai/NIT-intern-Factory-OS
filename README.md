@@ -61,11 +61,11 @@ ZenLyft enforces server-side Role-Based Access Control (RBAC) across all endpoin
 | Username | Password | Role | Operational Scope |
 |---|---|---|---|
 | `factory_admin` | `Admin@123` | `admin` | Full platform control, order approvals, user administration, invoice cancellation. |
-| `owner` | `Nash@123` | `owner` | Executive financial overview, revenue metrics, statutory tax summaries. |
-| `salesman_a` | `Nash@123` | `salesman` | Offline-first field order terminal; route customers; view only own orders. |
-| `supervisor` | `Nash@123` | `production` | Floor batch logger, recipe standard issue, scrap & overhead tracking. |
-| `accountant` | `Nash@123` | `accountant` | Invoicing, collections recording, payment receipts, bank reconciliation. |
-| `auditor` | `Nash@123` | `auditor` | **Strictly read-only** audit portal, GSTR-1, GSTR-3B, Excel (.xlsx) & PDF exports. |
+| `owner` | `ZenLyft@123` | `owner` | Executive financial overview, revenue metrics, statutory tax summaries. |
+| `salesman_a` | `ZenLyft@123` | `salesman` | Offline-first field order terminal; route customers; view only own orders. |
+| `supervisor` | `ZenLyft@123` | `production` | Floor batch logger, recipe standard issue, scrap & overhead tracking. |
+| `accountant` | `ZenLyft@123` | `accountant` | Invoicing, collections recording, payment receipts, bank reconciliation. |
+| `auditor` | `ZenLyft@123` | `auditor` | **Strictly read-only** audit portal, GSTR-1, GSTR-3B, Excel (.xlsx) & PDF exports. |
 
 ---
 

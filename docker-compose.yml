@@ -3,6 +3,7 @@ version: '3.8'
 services:
   mongo:
     image: mongo:7.0
+    container_name: zenlyft-mongo
     restart: always
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
@@ -20,18 +21,21 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+    container_name: zenlyft-server
     restart: always
     environment:
       PORT: 5000
-      NODE_ENV: production
+      NODE_ENV: development
       MONGODB_URI: mongodb://mongo:27017/zenlyft_erp?replicaSet=rs0
-      JWT_SECRET: zenlyft_nit_trichy_super_secret_production_key_2026_32char
+      JWT_SECRET: ${JWT_SECRET:-zenlyft_nit_trichy_super_secret_production_key_2026_32char}
       AUTO_SEED: "true"
-      DEFAULT_TENANT_ID: TENANT_NASH_FOODS
-      FACTORY_NAME: "Nash Foods Pvt Ltd"
-      FACTORY_STATE: "Tamil Nadu"
-      FACTORY_STATE_CODE: "33"
-      FACTORY_GSTIN: "33AAAAA0000A1Z5"
+      ALLOW_BENCHMARK: "true"
+      DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-ZENLYFT_DEMO}
+      FACTORY_NAME: ${FACTORY_NAME:-"ZenLyft Foods Manufacturing Pvt Ltd"}
+      FACTORY_STATE: ${FACTORY_STATE:-"Tamil Nadu"}
+      FACTORY_STATE_CODE: ${FACTORY_STATE_CODE:-"33"}
+      FACTORY_GSTIN: ${FACTORY_GSTIN:-"33AAAAA0000A1Z5"}
+      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-ZenLyft@123}
     depends_on:
       mongo:
         condition: service_healthy
@@ -42,6 +46,7 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+    container_name: zenlyft-client
     restart: always
     ports:
       - "80:80"

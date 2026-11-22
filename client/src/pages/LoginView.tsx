@@ -48,7 +48,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         onSwitchToStaff={() => {
           setLoginMode('staff');
           setUsername('supervisor');
-          setPassword('Nash@123');
+          setPassword('ZenLyft@123');
           setError(null);
         }}
       />
@@ -58,10 +58,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const demoAccounts = [
     { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive Oversight' },
     { username: 'owner', pass: 'Admin@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board & Profitability' },
-    { username: 'supervisor', pass: 'Nash@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Floor & BOM' },
-    { username: 'inventory_mgr', pass: 'Nash@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Central Warehouse' },
-    { username: 'accountant', pass: 'Nash@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Invoicing & Receipts' },
-    { username: 'auditor', pass: 'Nash@123', label: 'Statutory Auditor', role: 'auditor', type: 'staff', dept: 'Read-Only Ledger' },
+    { username: 'supervisor', pass: 'ZenLyft@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Floor & BOM' },
+    { username: 'inventory_mgr', pass: 'ZenLyft@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Central Warehouse' },
+    { username: 'accountant', pass: 'ZenLyft@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Invoicing & Receipts' },
+    { username: 'auditor', pass: 'ZenLyft@123', label: 'Statutory Auditor', role: 'auditor', type: 'staff', dept: 'Read-Only Ledger' },
   ];
 
   const handleSelectDemo = (account: typeof demoAccounts[0]) => {
@@ -172,7 +172,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               onClick={() => {
                 setLoginMode('staff');
                 setUsername('supervisor');
-                setPassword('Nash@123');
+                setPassword('ZenLyft@123');
                 setError(null);
               }}
               className={`py-2 text-[11px] font-bold rounded-lg transition flex items-center justify-center space-x-1 ${

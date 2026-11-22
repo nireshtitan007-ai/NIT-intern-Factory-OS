@@ -199,19 +199,19 @@ export const App: React.FC = () => {
 
       if (targetRole === 'salesman') {
         username = 'salesman_a';
-        password = 'Nash@123';
+        password = 'ZenLyft@123';
         endpoint = '/api/auth/salesman-mobile-login';
       } else if (targetRole === 'production') {
         username = 'supervisor';
-        password = 'Nash@123';
+        password = 'ZenLyft@123';
         endpoint = '/api/auth/login';
       } else if (targetRole === 'accountant') {
         username = 'accountant';
-        password = 'Nash@123';
+        password = 'ZenLyft@123';
         endpoint = '/api/auth/login';
       } else if (targetRole === 'auditor') {
         username = 'auditor';
-        password = 'Nash@123';
+        password = 'ZenLyft@123';
         endpoint = '/api/auth/login';
       }
 

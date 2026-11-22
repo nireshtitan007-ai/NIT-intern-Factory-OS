@@ -70,7 +70,7 @@ export async function seedBenchmarkData() {
 
   console.log('[Seed] Inserting Users with secure credentials & roles...');
   const salt = await bcrypt.genSalt(10);
-  const defaultPass = await bcrypt.hash('Nash@123', salt);
+  const defaultPass = await bcrypt.hash(process.env.SEED_DEFAULT_PASSWORD || 'ZenLyft@123', salt);
   const adminPass = await bcrypt.hash('Admin@123', salt);
 
   const users = await User.insertMany([

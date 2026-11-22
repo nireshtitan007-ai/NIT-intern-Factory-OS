@@ -128,7 +128,7 @@ const InvoiceSchema = new Schema<IInvoice>({
   customerGstin: { type: String },
   customerState: { type: String, required: true },
   customerStateCode: { type: String, required: true },
-  factoryState: { type: String, default: 'Tamil Nadu' },
+  factoryState: { type: String, default: () => process.env.FACTORY_STATE || 'Tamil Nadu' },
   placeOfSupply: { type: String, required: true },
   isInterState: { type: Boolean, required: true },
   items: [InvoiceItemSchema],

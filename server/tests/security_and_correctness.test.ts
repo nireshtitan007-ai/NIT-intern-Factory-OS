@@ -11,7 +11,8 @@ import {
   StockMovement,
   SalesOrder,
   Invoice,
-  Payment
+  Payment,
+  AuditLog
 } from '../src/models';
 import { StockLedgerService } from '../src/services/stockLedger.service';
 import { generateToken } from '../src/middleware/auth.middleware';
@@ -40,21 +41,21 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
     // Authenticate Salesman
     const salesmanRes = await request(app)
       .post('/api/auth/salesman-mobile-login')
-      .send({ username: 'salesman_a', password: 'Nash@123', routeTerritory: 'Tamil Nadu Field' });
+      .send({ username: 'salesman_a', password: 'ZenLyft@123', routeTerritory: 'Tamil Nadu Field' });
     expect(salesmanRes.status).toBe(200);
     salesmanToken = salesmanRes.body.token;
 
     // Authenticate Auditor
     const auditorRes = await request(app)
       .post('/api/auth/login')
-      .send({ username: 'auditor', password: 'Nash@123' });
+      .send({ username: 'auditor', password: 'ZenLyft@123' });
     expect(auditorRes.status).toBe(200);
     auditorToken = auditorRes.body.token;
 
     // Authenticate Production Supervisor
     const prodRes = await request(app)
       .post('/api/auth/login')
-      .send({ username: 'supervisor', password: 'Nash@123' });
+      .send({ username: 'supervisor', password: 'ZenLyft@123' });
     expect(prodRes.status).toBe(200);
     productionToken = prodRes.body.token;
   });
@@ -213,7 +214,7 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
       // Login as Salesman B
       const salesmanBRes = await request(app)
         .post('/api/auth/salesman-mobile-login')
-        .send({ username: 'salesman_b', password: 'Nash@123', routeTerritory: 'Karnataka Field' });
+        .send({ username: 'salesman_b', password: 'ZenLyft@123', routeTerritory: 'Karnataka Field' });
       expect(salesmanBRes.status).toBe(200);
       const salesmanBToken = salesmanBRes.body.token;
 
@@ -404,6 +405,35 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('6. Immutable Audit Trail (Append-Only AuditLog)', () => {
+    it('Blocks updates and deletions on AuditLog entries', async () => {
+      const entry = await AuditLog.create({
+        action: 'TEST_AUDIT_ACTION',
+        entityType: 'TestEntity',
+        entityId: 'test_123',
+        performedBy: 'test_user',
+        role: 'admin',
+        details: { note: 'Initial creation' }
+      });
+
+      expect(entry._id).toBeDefined();
+
+      // Mutation attempt via save()
+      entry.action = 'TAMPERED_ACTION';
+      await expect(entry.save()).rejects.toThrow('IMMUTABLE_AUDIT_LOG_VIOLATION');
+
+      // Mutation attempt via updateOne
+      await expect(
+        AuditLog.updateOne({ _id: entry._id }, { action: 'TAMPERED_VIA_UPDATE' })
+      ).rejects.toThrow('IMMUTABLE_AUDIT_LOG_VIOLATION');
+
+      // Deletion attempt via deleteOne
+      await expect(
+        AuditLog.deleteOne({ _id: entry._id })
+      ).rejects.toThrow('IMMUTABLE_AUDIT_LOG_VIOLATION');
     });
   });
 });
