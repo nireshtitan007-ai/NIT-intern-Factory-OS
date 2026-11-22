@@ -182,13 +182,41 @@ export const api = {
       body: JSON.stringify(data)
     }).then(r => r.json()),
 
-  // Reports
-  getSalesRegister: () => fetch(`${API_BASE}/reports/sales-register`, { headers: getAuthHeaders() }).then(r => r.json()),
-  getGSTSummary: () => fetch(`${API_BASE}/reports/gst-summary`, { headers: getAuthHeaders() }).then(r => r.json()),
-  getProductionReport: () => fetch(`${API_BASE}/reports/production-report`, { headers: getAuthHeaders() }).then(r => r.json()),
-  getOutstanding: () => fetch(`${API_BASE}/reports/outstanding`, { headers: getAuthHeaders() }).then(r => r.json()),
+  // Reports (Section 4.6 & Auditor Portal)
+  getSalesRegister: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/sales-register?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getGSTSummary: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/gst-summary?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getProductionReport: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/production-report?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getOutstanding: () => 
+    fetch(`${API_BASE}/reports/outstanding`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getCustomerSales: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/customer-sales?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getProductSales: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/product-sales?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getCollections: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/collections?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getStockLedgerRange: (from?: string, to?: string, itemId?: string) => 
+    fetch(`${API_BASE}/reports/stock-ledger-range?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}), ...(itemId ? { itemId } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
 
-  // CSV Exports
+  // Universal Authenticated Report Downloader (CSV, Excel, PDF)
+  downloadReportFile: async (reportPath: string, filename: string, format: 'csv' | 'xlsx' | 'pdf', from?: string, to?: string) => {
+    const params = new URLSearchParams({ format, ...(from ? { from } : {}), ...(to ? { to } : {}) });
+    const res = await fetch(`${API_BASE}${reportPath}?${params.toString()}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Download failed: ' + res.statusText);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+
+  // Legacy CSV Exports
   exportSalesRegisterCSV: () => `${API_BASE}/reports/sales-register?format=csv`,
   exportStockSummaryCSV: () => `${API_BASE}/inventory/stock-summary?format=csv`,
   exportProductionCSV: () => `${API_BASE}/reports/production-report?format=csv`,

@@ -27,6 +27,21 @@ import { seedBenchmarkData } from '../scripts/seedBenchmark';
 import { executeBenchmarkScenario } from '../scripts/runBenchmark';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { Serializers } from '../utils/serializers';
+import { ReportExporter, ReportColumnDef } from '../utils/reportExporter';
+
+function parseDateRange(req: Request): { from?: Date; to?: Date } {
+  let from: Date | undefined;
+  let to: Date | undefined;
+  if (req.query.from) {
+    from = new Date(req.query.from as string);
+    if (isNaN(from.getTime())) throw new Error('INVALID_DATE: "from" parameter must be a valid ISO date.');
+  }
+  if (req.query.to) {
+    to = new Date(req.query.to as string);
+    if (isNaN(to.getTime())) throw new Error('INVALID_DATE: "to" parameter must be a valid ISO date.');
+  }
+  return { from, to };
+}
 
 function getTenantId(req: Request): string {
   const authReq = req as AuthenticatedRequest;
@@ -423,14 +438,96 @@ export class ApiController {
   static async getSalesRegister(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const register = await ReportService.getSalesRegister(undefined, undefined, tenantId);
-      if (req.query.format === 'csv') {
-        const csv = CSVExportUtil.arrayToCSV(register);
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="sales_register.csv"');
-        return res.send(csv);
-      }
-      res.json({ success: true, register });
+      const { from, to } = parseDateRange(req);
+      const rows = await ReportService.getSalesRegister(from, to, tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Invoice No', key: 'invoiceNumber', width: 18 },
+        { header: 'Date', key: 'date', width: 14, isDate: true },
+        { header: 'Customer Code', key: 'customerCode', width: 14 },
+        { header: 'Customer Name', key: 'customerName', width: 22 },
+        { header: 'GSTIN', key: 'customerGstin', width: 18 },
+        { header: 'Taxable (₹)', key: 'taxableValue', width: 15, isCurrency: true },
+        { header: 'CGST (₹)', key: 'cgstTotal', width: 13, isCurrency: true },
+        { header: 'SGST (₹)', key: 'sgstTotal', width: 13, isCurrency: true },
+        { header: 'IGST (₹)', key: 'igstTotal', width: 13, isCurrency: true },
+        { header: 'Grand Total (₹)', key: 'grandTotal', width: 16, isCurrency: true },
+        { header: 'Balance Due (₹)', key: 'balanceDue', width: 15, isCurrency: true },
+        { header: 'Status', key: 'paymentStatus', width: 14 }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'sales_register',
+        'Sales Register',
+        columns,
+        rows,
+        { register: rows, dateRange: { from, to } }
+      );
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getCustomerWiseSales(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const { from, to } = parseDateRange(req);
+      const rows = await ReportService.getCustomerWiseSales(from, to, tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Code', key: 'customerCode', width: 14 },
+        { header: 'Customer Name', key: 'customerName', width: 24 },
+        { header: 'State', key: 'state', width: 15 },
+        { header: 'GSTIN', key: 'gstin', width: 18 },
+        { header: 'Invoices', key: 'invoicesCount', width: 12, isNumeric: true },
+        { header: 'Packets Sold', key: 'totalQuantity', width: 15, isNumeric: true },
+        { header: 'Taxable (₹)', key: 'totalTaxable', width: 16, isCurrency: true },
+        { header: 'GST Tax (₹)', key: 'totalTax', width: 15, isCurrency: true },
+        { header: 'Total Sales (₹)', key: 'grandTotal', width: 18, isCurrency: true }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'customer_wise_sales',
+        'Customer-Wise Sales Analysis',
+        columns,
+        rows,
+        { customers: rows, dateRange: { from, to } }
+      );
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getProductWiseSales(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const { from, to } = parseDateRange(req);
+      const rows = await ReportService.getProductWiseSales(from, to, tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Product Code', key: 'productCode', width: 16 },
+        { header: 'Product Name', key: 'productName', width: 24 },
+        { header: 'HSN Code', key: 'hsnCode', width: 14 },
+        { header: 'Packets Sold', key: 'totalPacketsSold', width: 15, isNumeric: true },
+        { header: 'Avg Price (₹)', key: 'avgPricePerPacket', width: 14, isCurrency: true },
+        { header: 'Taxable Value (₹)', key: 'totalTaxable', width: 16, isCurrency: true },
+        { header: 'GST Tax (₹)', key: 'totalTax', width: 14, isCurrency: true },
+        { header: 'Total Revenue (₹)', key: 'grandTotal', width: 18, isCurrency: true }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'product_wise_sales',
+        'Product-Wise Sales & Margin Report',
+        columns,
+        rows,
+        { products: rows, dateRange: { from, to } }
+      );
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -439,8 +536,55 @@ export class ApiController {
   static async getGSTSummary(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const summary = await ReportService.getGSTSummary(undefined, undefined, tenantId);
+      const { from, to } = parseDateRange(req);
+      const summary = await ReportService.getGSTSummary(from, to, tenantId);
+
+      if (req.query.format && req.query.format !== 'json') {
+        const columns: ReportColumnDef[] = [
+          { header: 'HSN Code', key: 'hsnCode', width: 14 },
+          { header: 'Description', key: 'description', width: 22 },
+          { header: 'Total Qty', key: 'totalQuantity', width: 14, isNumeric: true },
+          { header: 'Taxable (₹)', key: 'taxableValue', width: 16, isCurrency: true },
+          { header: 'CGST (₹)', key: 'cgstAmount', width: 14, isCurrency: true },
+          { header: 'SGST (₹)', key: 'sgstAmount', width: 14, isCurrency: true },
+          { header: 'IGST (₹)', key: 'igstAmount', width: 14, isCurrency: true },
+          { header: 'Total Tax (₹)', key: 'totalTax', width: 16, isCurrency: true }
+        ];
+        return ReportExporter.export(res, req.query.format as string, 'gstr1_hsn_summary', 'GSTR-1 HSN Outward Tax Summary', columns, summary.gstr1.hsnSummary);
+      }
+
       res.json({ success: true, summary });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getCollectionsReport(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const { from, to } = parseDateRange(req);
+      const rows = await ReportService.getCollectionsReport(from, to, tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Receipt No', key: 'paymentNumber', width: 16 },
+        { header: 'Date', key: 'date', width: 14, isDate: true },
+        { header: 'Customer Code', key: 'customerCode', width: 14 },
+        { header: 'Customer Name', key: 'customerName', width: 22 },
+        { header: 'Invoice No', key: 'invoiceNumber', width: 18 },
+        { header: 'Payment Method', key: 'paymentMethod', width: 16 },
+        { header: 'Reference', key: 'reference', width: 16 },
+        { header: 'Amount (₹)', key: 'amount', width: 16, isCurrency: true }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'collections_report',
+        'Payments & Collections Register',
+        columns,
+        rows,
+        { collections: rows, dateRange: { from, to } }
+      );
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -449,27 +593,34 @@ export class ApiController {
   static async getProductionReport(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const runs = await ReportService.getProductionReport(undefined, undefined, tenantId);
-      if (req.query.format === 'csv') {
-        const flatRuns = runs.map(r => ({
-          runNumber: r.runNumber,
-          productName: r.productName,
-          expectedOutput: r.batchExpectedOutput,
-          actualOutput: r.actualOutputPackets,
-          yieldPercent: r.yieldPercent,
-          yieldVariancePercent: r.yieldVariancePercent,
-          damagedPouches: r.damagedPouches,
-          cartonsUsed: r.cartonsUsed,
-          totalCost: r.totalProductionCost,
-          costPerPacket: r.costPerPacket,
-          date: r.createdAt
-        }));
-        const csv = CSVExportUtil.arrayToCSV(flatRuns);
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="production_report.csv"');
-        return res.send(csv);
-      }
-      res.json({ success: true, runs });
+      const { from, to } = parseDateRange(req);
+      const runs = await ReportService.getProductionReport(from, to, tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Run No', key: 'runNumber', width: 16 },
+        { header: 'Date', key: 'date', width: 14, isDate: true },
+        { header: 'Product Code', key: 'productCode', width: 14 },
+        { header: 'Target Pkts', key: 'expectedOutput', width: 13, isNumeric: true },
+        { header: 'Actual Pkts', key: 'actualOutput', width: 13, isNumeric: true },
+        { header: 'Yield %', key: 'yieldPercent', width: 12, isNumeric: true },
+        { header: 'Variance %', key: 'yieldVariancePercent', width: 13, isNumeric: true },
+        { header: 'Flag', key: 'yieldVarianceFlagged', width: 12 },
+        { header: 'Mat Cost (₹)', key: 'totalMaterialCost', width: 15, isCurrency: true },
+        { header: 'Total Cost (₹)', key: 'totalProductionCost', width: 15, isCurrency: true },
+        { header: 'Cost/Pkt (₹)', key: 'costPerPacket', width: 14, isCurrency: true },
+        { header: 'Margin/Pkt (₹)', key: 'grossMarginPerPacket', width: 15, isCurrency: true },
+        { header: 'Margin %', key: 'grossMarginPercent', width: 12, isNumeric: true }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'production_variance_report',
+        'Production Variance & Costing Report',
+        columns,
+        runs,
+        { runs, dateRange: { from, to } }
+      );
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -478,8 +629,57 @@ export class ApiController {
   static async getOutstanding(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
-      const outstanding = await ReportService.getOutstandingReceivables(tenantId);
-      res.json({ success: true, outstanding });
+      const rows = await ReportService.getOutstandingReceivables(tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Code', key: 'code', width: 14 },
+        { header: 'Customer Name', key: 'customerName', width: 22 },
+        { header: 'State', key: 'state', width: 14 },
+        { header: 'Credit Limit (₹)', key: 'creditLimit', width: 16, isCurrency: true },
+        { header: 'Outstanding (₹)', key: 'totalOutstanding', width: 16, isCurrency: true },
+        { header: '0-30 Days (₹)', key: 'current', width: 15, isCurrency: true },
+        { header: '31-60 Days (₹)', key: 'days31to60', width: 15, isCurrency: true },
+        { header: '61-90 Days (₹)', key: 'days61to90', width: 15, isCurrency: true },
+        { header: 'Over 90 Days (₹)', key: 'over90days', width: 16, isCurrency: true }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'receivables_aging',
+        'Receivables Aging & Credit Limit Report',
+        columns,
+        rows,
+        { outstanding: rows }
+      );
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getStockLedgerRange(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const { from, to } = parseDateRange(req);
+      const itemId = req.query.itemId as string;
+      const result = await ReportService.getStockLedgerRange(from, to, itemId, tenantId);
+
+      if (req.query.format && req.query.format !== 'json') {
+        const columns: ReportColumnDef[] = [
+          { header: 'Date', key: 'date', width: 14, isDate: true },
+          { header: 'Item Code', key: 'itemCode', width: 14 },
+          { header: 'Item Name', key: 'itemName', width: 22 },
+          { header: 'Movement Type', key: 'movementType', width: 18 },
+          { header: 'Quantity', key: 'quantity', width: 14, isNumeric: true },
+          { header: 'Unit', key: 'unit', width: 10 },
+          { header: 'Unit Cost (₹)', key: 'unitCost', width: 14, isCurrency: true },
+          { header: 'Running Bal', key: 'runningBalance', width: 15, isNumeric: true },
+          { header: 'Source Doc', key: 'sourceDocId', width: 18 }
+        ];
+        return ReportExporter.export(res, req.query.format as string, 'stock_ledger_statement', 'Stock Ledger Statement', columns, result.movements);
+      }
+
+      res.json({ success: true, ...result });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

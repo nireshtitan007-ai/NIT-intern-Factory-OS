@@ -94,9 +94,15 @@ router.post('/payments', authenticate, requireRoles('admin', 'owner', 'accountan
 
 // --- Regulatory, Financial & Production Reports ---
 router.get('/reports/sales-register', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getSalesRegister);
+router.get('/reports/customer-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCustomerWiseSales);
+router.get('/reports/customer-wise-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCustomerWiseSales);
+router.get('/reports/product-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getProductWiseSales);
+router.get('/reports/product-wise-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getProductWiseSales);
 router.get('/reports/gst-summary', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getGSTSummary);
+router.get('/reports/collections', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCollectionsReport);
 router.get('/reports/production-report', authenticate, requireRoles('admin', 'owner', 'production', 'accountant', 'auditor'), ApiController.getProductionReport);
 router.get('/reports/outstanding', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getOutstanding);
+router.get('/reports/stock-ledger-range', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'accountant', 'auditor'), ApiController.getStockLedgerRange);
 
 // --- Admin Control Centre, Owner Dashboard & Immutable Audit Trail ---
 router.get('/admin/overview', authenticate, requireAdmin, ApiController.getAdminOverview);
