@@ -62,7 +62,7 @@ const StockMovementSchema = new Schema<IStockMovement>({
   quantity: { type: Number, required: true },
   unit: { type: String, required: true },
   unitCost: { type: Number, default: 0 },
-  unitCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  unitCostPaise: { type: Number, default: 0 },
   totalCost: { type: Number, default: 0 },
   totalCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   sourceDocType: { 

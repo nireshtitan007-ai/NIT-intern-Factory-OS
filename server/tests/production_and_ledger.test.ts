@@ -272,11 +272,28 @@ describe('Step 2: BOM-Driven Production, Multi-SKU, Atomic Ledger & FEFO Accepta
       expect(initialRun.directLaborCostPaise).toBe(0);
       expect(initialRun.directOverheadCostPaise).toBe(0);
 
-      // Total material cost = ₹4,055 (1725 flour [WAC 43.125] + 1470 oil + 240 spice + 485 pouches + 135 cartons)
+      // Total material cost = ₹4,055 (1725 flour [WAC 43.125] + 1365 oil + 300 spice + 291 pouches + 369 cartons)
+      expect(initialRun.totalMaterialCostPaise).toBe(405500);
       expect(initialRun.totalMaterialCost).toBe(4055);
+      expect(initialRun.totalProductionCostPaise).toBe(405500);
       expect(initialRun.totalProductionCost).toBe(4055);
       // Cost per packet = Math.round(405500 / 188) / 100 = 2157 paise = ₹21.57
       expect(initialRun.costPerPacket).toBe(21.57);
+
+      // Verify flour issue line cost and ledger movement match exactly at 172500 paise
+      const flourIssue = initialRun.materialsIssued.find(m => m.materialCode === 'FLOUR');
+      expect(flourIssue).toBeDefined();
+      expect(flourIssue?.totalCostPaise).toBe(172500);
+      expect(flourIssue?.totalCost).toBe(1725);
+
+      const flourLedgerMovement = await StockMovement.findOne({
+        sourceDocId: initialRun.runNumber,
+        itemCode: 'FLOUR',
+        movementType: 'PRODUCTION_ISSUE'
+      });
+      expect(flourLedgerMovement).toBeDefined();
+      expect(flourLedgerMovement?.totalCostPaise).toBe(172500);
+      expect(flourLedgerMovement?.totalCostPaise).toBe(flourIssue?.totalCostPaise);
 
       // Update overheads post-run: ₹1,200 labour, ₹600 power/gas
       const updatedRun = await ProductionService.updateOverheads(initialRun._id.toString(), 1200, 600);

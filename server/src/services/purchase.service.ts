@@ -83,7 +83,7 @@ export class PurchaseService {
 
       material.totalValuePaise = wac.totalValuePaise;
       material.currentWeightedRate = wac.rateRupeesPerUnit;
-      material.currentWeightedRatePaise = Math.round(wac.ratePaisePerUnit);
+      material.currentWeightedRatePaise = wac.ratePaisePerUnit;
       material.standardRate = item.rate;
       material.standardRatePaise = ratePaise;
       await material.save();

@@ -36,7 +36,7 @@ const RawMaterialSchema = new Schema<IRawMaterial>({
   standardRate: { type: Number, required: true },
   standardRatePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   currentWeightedRate: { type: Number, required: true },
-  currentWeightedRatePaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  currentWeightedRatePaise: { type: Number, default: 0 },
   totalValuePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   reorderLevel: { type: Number, default: 0 },
   active: { type: Boolean, default: true, index: true },

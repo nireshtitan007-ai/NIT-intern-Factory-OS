@@ -55,7 +55,7 @@ const IssuedMaterialSchema = new Schema<IIssuedMaterial>({
   actualQtyIssued: { type: Number, required: true },
   unit: { type: String, required: true },
   unitCost: { type: Number, required: true },
-  unitCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  unitCostPaise: { type: Number, default: 0 },
   totalCost: { type: Number, required: true },
   totalCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   varianceQty: { type: Number, required: true },

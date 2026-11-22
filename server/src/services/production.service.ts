@@ -12,7 +12,7 @@ import {
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
 import { RealtimeService } from './realtime.service';
-import { rupeesToPaise, paiseToRupees } from '../utils/money';
+import { rupeesToPaise, paiseToRupees, mulQtyRate } from '../utils/money';
 import { convert } from '../utils/units';
 
 export interface ExecuteProductionRunParams {
@@ -128,9 +128,13 @@ export class ProductionService {
         : 0;
       const varianceFlagged = Math.abs(variancePercent) > tolerance;
 
-      const unitCost = rawMaterial.currentWeightedRate || rawMaterial.standardRate;
-      const unitCostPaise = rupeesToPaise(unitCost);
-      const lineCostPaise = Math.round(actualQty * unitCost * 100);
+      // Costing precision: use rawMaterial.currentWeightedRatePaise directly (not rupeesToPaise(currentWeightedRate))
+      // so WAC remains exact (e.g. 4312.5 paise/kg for flour). Line cost = mulQtyRate(actualQty, unitCostPaise) with half-up rounding.
+      const unitCostPaise = rawMaterial.currentWeightedRatePaise !== undefined && rawMaterial.currentWeightedRatePaise > 0
+        ? rawMaterial.currentWeightedRatePaise
+        : (rawMaterial.standardRatePaise || (rawMaterial.standardRate * 100));
+      const unitCost = paiseToRupees(unitCostPaise);
+      const lineCostPaise = mulQtyRate(actualQty, unitCostPaise);
       const lineCost = paiseToRupees(lineCostPaise);
       totalMaterialCostPaise += lineCostPaise;
 
@@ -213,9 +217,13 @@ export class ProductionService {
         : 0;
       const varianceFlagged = Math.abs(variancePercent) > tolerance;
 
-      const unitCost = rawMaterial.currentWeightedRate || rawMaterial.standardRate;
-      const unitCostPaise = rupeesToPaise(unitCost);
-      const lineCostPaise = Math.round(actualQty * unitCost * 100);
+      // Costing precision: use rawMaterial.currentWeightedRatePaise directly (not rupeesToPaise(currentWeightedRate))
+      // so WAC remains exact (e.g. 4312.5 paise/kg for flour). Line cost = mulQtyRate(actualQty, unitCostPaise) with half-up rounding.
+      const unitCostPaise = rawMaterial.currentWeightedRatePaise !== undefined && rawMaterial.currentWeightedRatePaise > 0
+        ? rawMaterial.currentWeightedRatePaise
+        : (rawMaterial.standardRatePaise || (rawMaterial.standardRate * 100));
+      const unitCost = paiseToRupees(unitCostPaise);
+      const lineCostPaise = mulQtyRate(actualQty, unitCostPaise);
       const lineCost = paiseToRupees(lineCostPaise);
       totalMaterialCostPaise += lineCostPaise;
 
@@ -308,6 +316,8 @@ export class ProductionService {
           unit: issue.rawMaterial.unit,
           unitCost: issue.unitCost,
           unitCostPaise: issue.unitCostPaise,
+          totalCost: issue.lineCost,
+          totalCostPaise: issue.lineCostPaise,
           sourceDocType: 'PRODUCTION_RUN',
           sourceDocId: runNumber,
           notes: `Production Run ${runNumber} issue for ${product.name}${issue.conversionNote}`,
