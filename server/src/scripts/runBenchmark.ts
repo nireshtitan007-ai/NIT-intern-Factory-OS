@@ -1,3 +1,7 @@
+import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 import { connectDB, disconnectDB } from '../config/db';
 import { seedBenchmarkData } from './seedBenchmark';
 import { PurchaseService } from '../services/purchase.service';

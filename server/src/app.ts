@@ -52,10 +52,11 @@ export const createApp = () => {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // Request logging middleware
+  // Request logging middleware with query token redaction
   app.use((req, res, next) => {
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`[API] ${req.method} ${req.url}`);
+      const sanitizedUrl = req.url.replace(/([?&]token=)[^&]+/i, '$1[REDACTED]');
+      console.log(`[API] ${req.method} ${sanitizedUrl}`);
     }
     next();
   });

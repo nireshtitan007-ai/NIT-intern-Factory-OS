@@ -1,9 +1,11 @@
+import path from 'path';
 import dotenv from 'dotenv';
-dotenv.config();
+// Load .env explicitly from server directory
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
-let mongodInstance: MongoMemoryServer | null = null;
+let replSetInstance: MongoMemoryReplSet | null = null;
 
 export const connectDB = async (customUri?: string): Promise<string> => {
   if (mongoose.connection.readyState === 1) {
@@ -13,11 +15,14 @@ export const connectDB = async (customUri?: string): Promise<string> => {
 
   if (!uri) {
     try {
-      mongodInstance = await MongoMemoryServer.create();
-      uri = mongodInstance.getUri();
-      console.log(`[Database] Initialized In-Memory MongoDB Engine at ${uri}`);
+      // In-memory single-node replica set enabling multi-document transactions in clean test environments
+      replSetInstance = await MongoMemoryReplSet.create({
+        replSet: { count: 1 }
+      });
+      uri = replSetInstance.getUri();
+      console.log(`[Database] Initialized In-Memory MongoDB Replica Set at ${uri}`);
     } catch (err) {
-      console.error('[Database] Failed to start MongoMemoryServer, falling back to localhost:27017/zenlyft_erp', err);
+      console.error('[Database] Failed to start MongoMemoryReplSet, falling back to localhost:27017/zenlyft_erp', err);
       uri = 'mongodb://127.0.0.1:27017/zenlyft_erp';
     }
   }
@@ -34,9 +39,8 @@ export const connectDB = async (customUri?: string): Promise<string> => {
 
 export const disconnectDB = async (): Promise<void> => {
   await mongoose.disconnect();
-  if (mongodInstance) {
-    await mongodInstance.stop();
-    mongodInstance = null;
+  if (replSetInstance) {
+    await replSetInstance.stop();
+    replSetInstance = null;
   }
 };
-

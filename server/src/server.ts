@@ -1,5 +1,6 @@
+import path from 'path';
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import { createApp } from './app';
 import { connectDB } from './config/db';
@@ -12,9 +13,9 @@ async function bootstrap() {
   try {
     await connectDB();
     
-    // Auto-seed if database is fresh
+    // Auto-seed if database is fresh or AUTO_SEED flag is enabled
     const productCount = await Product.countDocuments();
-    if (productCount === 0) {
+    if (productCount === 0 || process.env.AUTO_SEED === 'true') {
       console.log('[Bootstrap] No existing products found. Seeding NIT Tiruchirappalli Section 5 Master Data...');
       await seedBenchmarkData();
     }

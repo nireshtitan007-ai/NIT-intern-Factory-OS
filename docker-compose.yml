@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7.0
+    restart: always
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: mongosh --eval "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }" --quiet
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+    volumes:
+      - mongo-data:/data/db
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/zenlyft_erp?replicaSet=rs0
+      JWT_SECRET: zenlyft_nit_trichy_super_secret_production_key_2026_32char
+      AUTO_SEED: "true"
+      DEFAULT_TENANT_ID: TENANT_NASH_FOODS
+      FACTORY_NAME: "Nash Foods Pvt Ltd"
+      FACTORY_STATE: "Tamil Nadu"
+      FACTORY_STATE_CODE: "33"
+      FACTORY_GSTIN: "33AAAAA0000A1Z5"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+      - "5173:80"
+    depends_on:
+      - server
+
+volumes:
+  mongo-data:
