@@ -11,7 +11,8 @@ import {
   AuditLog,
   StockMovement,
   getNextSequence,
-  Settings
+  Settings,
+  CreditNote
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
@@ -23,7 +24,7 @@ import {
   validatePaymentPaise
 } from '../utils/money';
 import { convert } from '../utils/units';
-import { getFinancialYear, formatInvoiceNumber } from '../utils/financialYear';
+import { getFinancialYear, formatInvoiceNumber, formatCreditNoteNumber } from '../utils/financialYear';
 
 export interface CreateOrderParams {
   tenantId?: string;
@@ -153,6 +154,99 @@ export class SalesOrderService {
     });
 
     RealtimeService.broadcast('ORDER_CREATED', order);
+    return order;
+  }
+
+  /**
+   * Modifies quantities and unit prices on a SUBMITTED order (Admin / Owner only)
+   * Records old and new values in the append-only AuditLog.
+   */
+  static async editOrder(
+    orderId: string,
+    updatedItems: Array<{ productCode?: string; productId?: string; quantity: number; unitPrice?: number }>,
+    editorName: string = 'Admin',
+    editorRole: string = 'admin'
+  ): Promise<ISalesOrder> {
+    const order = await SalesOrder.findById(orderId);
+    if (!order) throw new Error(`Sales order ${orderId} not found`);
+
+    if (order.status !== 'SUBMITTED') {
+      throw new Error(`ORDER_NOT_EDITABLE: Order ${order.orderNumber} is in status ${order.status}. Only SUBMITTED orders can be edited.`);
+    }
+
+    const oldItems = order.items.map(i => ({
+      productCode: i.productCode,
+      productName: i.productName,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      unitPricePaise: i.unitPricePaise,
+      lineTotal: i.lineTotal,
+      lineTotalPaise: i.lineTotalPaise
+    }));
+    const oldTotalAmountPaise = order.totalAmountPaise || rupeesToPaise(order.totalAmount);
+
+    let newTotalAmountPaise = 0;
+    const newItems: any[] = [];
+    let isSufficient = true;
+    let totalShortage = 0;
+    let totalAvailable = 0;
+
+    for (const update of updatedItems) {
+      const product = update.productId
+        ? await Product.findById(update.productId)
+        : await Product.findOne({ code: update.productCode, tenantId: order.tenantId });
+      if (!product) throw new Error(`Product ${update.productId || update.productCode} not found`);
+
+      const pricePaise = update.unitPrice !== undefined ? rupeesToPaise(update.unitPrice) : (product.sellingPricePaise || rupeesToPaise(product.sellingPrice));
+      const lineTotalPaise = update.quantity * pricePaise;
+      newTotalAmountPaise += lineTotalPaise;
+
+      const avail = product.currentStock;
+      totalAvailable += avail;
+      if (avail < update.quantity) {
+        isSufficient = false;
+        totalShortage += (update.quantity - avail);
+      }
+
+      newItems.push({
+        productId: product._id,
+        productCode: product.code,
+        productName: product.name,
+        quantity: update.quantity,
+        unitPrice: paiseToRupees(pricePaise),
+        unitPricePaise: pricePaise,
+        lineTotal: paiseToRupees(lineTotalPaise),
+        lineTotalPaise
+      });
+    }
+
+    order.items = newItems;
+    order.totalAmountPaise = newTotalAmountPaise;
+    order.totalAmount = paiseToRupees(newTotalAmountPaise);
+    order.stockCheck = {
+      availableStock: totalAvailable,
+      isSufficient,
+      shortageQuantity: totalShortage
+    };
+
+    await order.save();
+
+    await AuditLog.create({
+      tenantId: order.tenantId,
+      action: 'SALES_ORDER_EDITED',
+      entityType: 'SalesOrder',
+      entityId: order.orderNumber,
+      performedBy: editorName,
+      role: editorRole,
+      details: {
+        orderId: order._id.toString(),
+        oldItems,
+        newItems,
+        oldTotalAmountPaise,
+        newTotalAmountPaise
+      }
+    });
+
     return order;
   }
 
@@ -360,30 +454,56 @@ export class SalesOrderService {
   }
 
   /**
-   * Dispatches an invoiced order:
-   * Deducts finished goods stock via StockMovement (SALES_DISPATCH)
+   * Dispatches an invoiced order (supports partial or complete dispatch):
+   * Deducts finished goods stock via StockMovement (SALES_DISPATCH) using FEFO batch allocation.
    */
   static async dispatchOrder(
-    invoiceId: string,
+    invoiceIdOrOrderId: string,
     dispatcherName: string = 'Admin',
-    dispatcherRole: string = 'admin'
+    dispatcherRole: string = 'admin',
+    dispatchItems?: Array<{ productId?: string; productCode?: string; dispatchQty: number }>
   ): Promise<IInvoice> {
-    const invoice = await Invoice.findById(invoiceId);
-    if (!invoice) throw new Error(`Invoice ${invoiceId} not found`);
+    let invoice = await Invoice.findById(invoiceIdOrOrderId);
+    if (!invoice) {
+      invoice = await Invoice.findOne({ salesOrderId: invoiceIdOrOrderId });
+    }
+    if (!invoice) throw new Error(`Invoice for ${invoiceIdOrOrderId} not found`);
+
+    if (invoice.isCancelled) {
+      throw new Error(`INVOICE_CANCELLED: Invoice ${invoice.invoiceNumber} is cancelled and cannot be dispatched.`);
+    }
 
     if (invoice.isDispatched) {
-      throw new Error(`Invoice ${invoice.invoiceNumber} is already dispatched`);
+      throw new Error(`Invoice ${invoice.invoiceNumber} is already completely dispatched`);
     }
 
     const tenantId = invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
 
     for (const item of invoice.items) {
+      const alreadyDispatched = item.dispatchedQty || 0;
+      const remainingForLine = item.quantity - alreadyDispatched;
+      if (remainingForLine <= 0) continue;
+
+      let qtyToDispatchThisRun = remainingForLine;
+      if (dispatchItems && dispatchItems.length > 0) {
+        const match = dispatchItems.find(
+          d => (d.productId && d.productId.toString() === item.productId.toString()) ||
+               (d.productCode && d.productCode === item.productCode)
+        );
+        if (!match) continue; // Skip items not included in this batch
+        if (match.dispatchQty <= 0) continue;
+        if (match.dispatchQty > remainingForLine) {
+          throw new Error(`DISPATCH_QUANTITY_EXCEEDED: Cannot dispatch ${match.dispatchQty} for ${item.productName}. Maximum remaining is ${remainingForLine}.`);
+        }
+        qtyToDispatchThisRun = match.dispatchQty;
+      }
+
       const product = await Product.findOne({ _id: item.productId, tenantId }) || await Product.findById(item.productId);
       if (!product) continue;
 
-      if (product.currentStock < item.quantity) {
+      if (product.currentStock < qtyToDispatchThisRun) {
         throw new Error(
-          `Cannot dispatch: insufficient finished goods stock for ${product.name}. Available: ${product.currentStock}, Required: ${item.quantity}`
+          `Cannot dispatch: insufficient finished goods stock for ${product.name}. Available: ${product.currentStock}, Required: ${qtyToDispatchThisRun}`
         );
       }
 
@@ -395,11 +515,11 @@ export class SalesOrderService {
         quantity: { $gt: 0 }
       }).sort({ expiryDate: 1, createdAt: 1 }).lean();
 
-      let remainingToDispatch = item.quantity;
+      let remainingToAllocate = qtyToDispatchThisRun;
       const allocatedBatches: string[] = [];
 
       for (const receipt of batchReceipts) {
-        if (remainingToDispatch <= 0) break;
+        if (remainingToAllocate <= 0) break;
         const batchTag = receipt.batchNumber || 'OPENING-BATCH';
 
         const dispatchesFromBatch = await StockMovement.aggregate([
@@ -413,13 +533,13 @@ export class SalesOrderService {
           },
           { $group: { _id: null, total: { $sum: '$quantity' } } }
         ]);
-        const alreadyDispatched = dispatchesFromBatch.length > 0 ? Math.abs(dispatchesFromBatch[0].total) : 0;
-        const availableInBatch = Math.max(0, receipt.quantity - alreadyDispatched);
+        const alreadyDispatchedFromLot = dispatchesFromBatch.length > 0 ? Math.abs(dispatchesFromBatch[0].total) : 0;
+        const availableInBatch = Math.max(0, receipt.quantity - alreadyDispatchedFromLot);
 
         if (availableInBatch > 0) {
-          const allocQty = Math.min(remainingToDispatch, availableInBatch);
+          const allocQty = Math.min(remainingToAllocate, availableInBatch);
           allocatedBatches.push(`${batchTag} (${allocQty} pkts)`);
-          remainingToDispatch -= allocQty;
+          remainingToAllocate -= allocQty;
         }
       }
 
@@ -427,32 +547,48 @@ export class SalesOrderService {
         ? ` | FEFO Batches: ${allocatedBatches.join(', ')}`
         : '';
 
+      const unitPricePaise = item.unitPricePaise || rupeesToPaise(item.unitPrice);
+      const totalCostPaise = qtyToDispatchThisRun * unitPricePaise;
+
       await StockLedgerService.recordMovement({
         tenantId,
         itemType: 'FINISHED_GOOD',
         itemId: product._id,
         itemCode: product.code,
-        itemName: `${product.name} (${product.packSize})`,
+        itemName: `${product.name} (${product.packSize || 'packet'})`,
         movementType: 'SALES_DISPATCH',
-        quantity: -item.quantity,
+        quantity: -qtyToDispatchThisRun,
         unit: product.unit,
         unitCost: item.unitPrice,
+        unitCostPaise: unitPricePaise,
+        totalCostPaise,
         sourceDocType: 'INVOICE',
         sourceDocId: invoice.invoiceNumber,
-        notes: `Dispatch for Invoice ${invoice.invoiceNumber} to ${invoice.customerName}${fefoNote}`,
+        notes: `Dispatch of ${qtyToDispatchThisRun} pkts for Invoice ${invoice.invoiceNumber} to ${invoice.customerName}${fefoNote}`,
         createdBy: dispatcherName
       });
+
+      item.dispatchedQty = (item.dispatchedQty || 0) + qtyToDispatchThisRun;
     }
 
-    invoice.isDispatched = true;
-    invoice.dispatchDate = new Date();
-    await invoice.save();
+    const allLinesComplete = invoice.items.every(i => (i.dispatchedQty || 0) >= i.quantity);
+    const anyLinesDispatched = invoice.items.some(i => (i.dispatchedQty || 0) > 0);
 
-    await SalesOrder.findByIdAndUpdate(invoice.salesOrderId, { status: 'DISPATCHED' });
+    if (allLinesComplete) {
+      invoice.isDispatched = true;
+      invoice.dispatchStatus = 'DISPATCHED';
+      invoice.dispatchDate = new Date();
+      await SalesOrder.findByIdAndUpdate(invoice.salesOrderId, { status: 'DISPATCHED' });
+    } else if (anyLinesDispatched) {
+      invoice.dispatchStatus = 'PARTIALLY_DISPATCHED';
+      invoice.dispatchDate = invoice.dispatchDate || new Date();
+    }
+
+    await invoice.save();
 
     await AuditLog.create({
       tenantId,
-      action: 'ORDER_DISPATCHED',
+      action: invoice.isDispatched ? 'ORDER_DISPATCHED' : 'ORDER_PARTIALLY_DISPATCHED',
       entityType: 'Invoice',
       entityId: invoice._id.toString(),
       performedBy: dispatcherName,
@@ -460,7 +596,8 @@ export class SalesOrderService {
       details: {
         invoiceNumber: invoice.invoiceNumber,
         customerName: invoice.customerName,
-        itemsCount: invoice.items.length
+        dispatchStatus: invoice.dispatchStatus,
+        items: invoice.items.map(i => ({ code: i.productCode, ordered: i.quantity, dispatched: i.dispatchedQty }))
       }
     });
 
@@ -473,6 +610,122 @@ export class SalesOrderService {
 
     RealtimeService.broadcast('ORDER_DISPATCHED', { invoice });
     return invoice;
+  }
+
+  /**
+   * Cancels a GST invoice and issues a statutory Credit Note.
+   * - Never deletes or mutates posted invoice lines
+   * - Reduces customer outstanding balance
+   * - Restores inventory via SALES_RETURN movements if goods were dispatched
+   * - Reverses liability in GST summary
+   */
+  static async cancelInvoice(
+    invoiceId: string,
+    reason: string,
+    cancelledBy: string = 'Admin',
+    cancelledRole: string = 'admin'
+  ): Promise<{ invoice: IInvoice; creditNote: any }> {
+    if (!reason || !reason.trim()) {
+      throw new Error('CANCELLATION_REASON_REQUIRED: A valid business justification is mandatory to issue a credit note.');
+    }
+
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) throw new Error(`Invoice ${invoiceId} not found`);
+
+    if (invoice.isCancelled) {
+      throw new Error(`INVOICE_ALREADY_CANCELLED: Invoice ${invoice.invoiceNumber} has already been cancelled.`);
+    }
+
+    const tenantId = invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
+    const fy = getFinancialYear(new Date());
+    const cnSeq = await getNextSequence(tenantId, `CREDIT_NOTE:${fy}`);
+    const creditNoteNumber = formatCreditNoteNumber(fy, cnSeq);
+
+    const creditNote = new CreditNote({
+      tenantId,
+      creditNoteNumber,
+      invoiceId: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      customerId: invoice.customerId,
+      customerCode: invoice.customerCode,
+      customerName: invoice.customerName,
+      customerState: invoice.customerState,
+      customerStateCode: invoice.customerStateCode,
+      customerGstin: invoice.customerGstin,
+      reason,
+      taxableValuePaise: invoice.taxableValuePaise,
+      cgstTotalPaise: invoice.cgstTotalPaise,
+      sgstTotalPaise: invoice.sgstTotalPaise,
+      igstTotalPaise: invoice.igstTotalPaise,
+      grandTotalPaise: invoice.grandTotalPaise,
+      isInterState: invoice.isInterState,
+      financialYear: fy,
+      cancelledBy,
+      role: cancelledRole,
+      createdAt: new Date()
+    });
+    await creditNote.save();
+
+    invoice.isCancelled = true;
+    invoice.cancelledAt = new Date();
+    invoice.cancellationReason = reason;
+    invoice.creditNoteId = creditNote._id;
+    invoice.creditNoteNumber = creditNoteNumber;
+    invoice.paymentStatus = 'CANCELLED';
+    await invoice.save();
+
+    // Reduce customer receivables
+    const customer = await Customer.findById(invoice.customerId);
+    if (customer) {
+      const currentBalPaise = customer.outstandingBalancePaise || rupeesToPaise(customer.outstandingBalance);
+      const newBalPaise = Math.max(0, currentBalPaise - (invoice.grandTotalPaise || 0));
+      customer.outstandingBalancePaise = newBalPaise;
+      customer.outstandingBalance = paiseToRupees(newBalPaise);
+      await customer.save();
+    }
+
+    // Return dispatched goods to stock
+    for (const item of invoice.items) {
+      const dispatchedQty = item.dispatchedQty || (invoice.isDispatched ? item.quantity : 0);
+      if (dispatchedQty > 0) {
+        const unitPricePaise = item.unitPricePaise || rupeesToPaise(item.unitPrice);
+        await StockLedgerService.recordMovement({
+          tenantId,
+          itemType: 'FINISHED_GOOD',
+          itemId: item.productId,
+          itemCode: item.productCode,
+          itemName: item.productName,
+          movementType: 'ADJUSTMENT',
+          quantity: dispatchedQty, // positive inward movement
+          unit: 'packet',
+          unitCost: item.unitPrice,
+          unitCostPaise: unitPricePaise,
+          totalCostPaise: dispatchedQty * unitPricePaise,
+          sourceDocType: 'INVOICE',
+          sourceDocId: creditNoteNumber,
+          notes: `Sales return from cancelled invoice ${invoice.invoiceNumber}. Credit Note: ${creditNoteNumber}. Reason: ${reason}`,
+          createdBy: cancelledBy
+        });
+      }
+    }
+
+    await AuditLog.create({
+      tenantId,
+      action: 'INVOICE_CANCELLED_CREDIT_NOTE_ISSUED',
+      entityType: 'Invoice',
+      entityId: invoice.invoiceNumber,
+      performedBy: cancelledBy,
+      role: cancelledRole,
+      details: {
+        creditNoteNumber,
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        reason,
+        grandTotalPaise: invoice.grandTotalPaise
+      }
+    });
+
+    return { invoice, creditNote };
   }
 
   /**

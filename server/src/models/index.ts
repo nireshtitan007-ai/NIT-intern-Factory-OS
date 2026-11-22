@@ -14,3 +14,4 @@ export * from './Notification';
 export * from './Inquiry';
 export * from './Counter';
 export * from './Settings';
+export * from './CreditNote';

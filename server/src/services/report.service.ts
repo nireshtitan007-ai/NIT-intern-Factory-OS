@@ -1,4 +1,4 @@
-import { Invoice, Payment, Purchase, ProductionRun, Customer, Product, RawMaterial } from '../models';
+import { Invoice, Payment, Purchase, ProductionRun, Customer, Product, RawMaterial, CreditNote } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 
 export class ReportService {
@@ -45,7 +45,9 @@ export class ReportService {
       if (endDate) query.createdAt.$lte = endDate;
     }
 
-    const invoices = await Invoice.find(query).lean();
+    const activeInvoiceQuery: any = { ...query, isCancelled: { $ne: true } };
+    const invoices = await Invoice.find(activeInvoiceQuery).lean();
+    const creditNotes = await CreditNote.find(query).lean();
 
     let intraStateTaxable = 0;
     let intraStateCGST = 0;
@@ -74,6 +76,7 @@ export class ReportService {
         endDate: endDate || null
       },
       b2bCount: invoices.length,
+      creditNotesCount: creditNotes.length,
       intraState: {
         taxableValue: Math.round(intraStateTaxable * 100) / 100,
         cgst: Math.round(intraStateCGST * 100) / 100,

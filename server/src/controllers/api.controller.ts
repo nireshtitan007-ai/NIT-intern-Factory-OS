@@ -299,11 +299,27 @@ export class ApiController {
     }
   }
 
+  static async editOrder(req: Request, res: Response) {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const editorName = user?.name || user?.username || 'Admin';
+      const items = req.body.items;
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, error: 'Items array is required for order edit.' });
+      }
+      const order = await SalesOrderService.editOrder(req.params.id, items, editorName, user?.role || 'admin');
+      res.json({ success: true, order: Serializers.serializeSalesOrder(order) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
   static async dispatchOrder(req: Request, res: Response) {
     try {
       const user = (req as AuthenticatedRequest).user;
       const dispatcherName = user?.name || user?.username || req.body.dispatcherName || 'Factory Admin';
-      const invoice = await SalesOrderService.dispatchOrder(req.params.id, dispatcherName, user?.role || 'admin');
+      const dispatchItems = req.body.items;
+      const invoice = await SalesOrderService.dispatchOrder(req.params.id, dispatcherName, user?.role || 'admin', dispatchItems);
       res.json({ success: true, invoice: Serializers.serializeInvoice(invoice) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -321,6 +337,22 @@ export class ApiController {
     }
   }
 
+  static async cancelInvoice(req: Request, res: Response) {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const cancelledBy = user?.name || user?.username || 'Admin';
+      const { reason } = req.body;
+      const result = await SalesOrderService.cancelInvoice(req.params.id, reason, cancelledBy, user?.role || 'admin');
+      res.json({
+        success: true,
+        invoice: Serializers.serializeInvoice(result.invoice),
+        creditNote: result.creditNote
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
   static async getInvoicePDF(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
@@ -330,6 +362,26 @@ export class ApiController {
       const pdfBuffer = await PDFInvoiceGenerator.generateInvoicePDF(invoice);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="Invoice_${invoice.invoiceNumber.replace(/\//g, '_')}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getCreditNotePDF(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const invoice = await Invoice.findOne({ _id: req.params.id, tenantId }) || await Invoice.findById(req.params.id);
+      if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+      if (!invoice.isCancelled) return res.status(400).json({ success: false, error: 'Credit note only available for cancelled invoices.' });
+
+      const pdfBuffer = await PDFInvoiceGenerator.generateInvoicePDF(invoice, {
+        isCreditNote: true,
+        creditNoteNumber: invoice.creditNoteNumber,
+        reason: invoice.cancellationReason
+      });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="CreditNote_${invoice.creditNoteNumber?.replace(/\//g, '_') || 'CN'}.pdf"`);
       res.send(pdfBuffer);
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

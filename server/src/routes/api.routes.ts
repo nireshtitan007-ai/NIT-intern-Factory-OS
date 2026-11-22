@@ -75,6 +75,7 @@ router.put('/production/runs/:id/costs', authenticate, requireRoles('admin', 'ow
 // --- Sales Orders & Offline Sync ---
 router.get('/orders', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'accountant', 'auditor'), ApiController.getSalesOrders);
 router.post('/orders', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager'), validateBody(createOrderSchema), ApiController.createSalesOrder);
+router.put('/orders/:id', authenticate, requireRoles('admin', 'owner'), ApiController.editOrder);
 router.post('/orders/sync-batch', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager'), validateBody(syncOfflineBatchSchema), ApiController.syncOfflineOrders);
 router.put('/orders/:id/approve', authenticate, requireRoles('admin', 'owner'), validateBody(approveOrderSchema), ApiController.approveOrder);
 router.put('/orders/:id/reject', authenticate, requireRoles('admin', 'owner'), validateBody(rejectOrderSchema), ApiController.rejectOrder);
@@ -82,7 +83,10 @@ router.put('/orders/:id/dispatch', authenticate, requireRoles('admin', 'owner', 
 
 // --- Invoicing & GST Tax Engine ---
 router.get('/invoices', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'salesman', 'sales_manager'), ApiController.getInvoices);
+router.post('/invoices/:id/cancel', authenticate, requireRoles('admin', 'owner'), ApiController.cancelInvoice);
+router.post('/invoices/:id/dispatch', authenticate, requireRoles('admin', 'owner', 'inventory'), ApiController.dispatchOrder);
 router.get('/invoices/:id/pdf', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'salesman', 'sales_manager'), ApiController.getInvoicePDF);
+router.get('/invoices/:id/credit-note/pdf', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCreditNotePDF);
 
 // --- Collections & Payments ---
 router.get('/payments', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getPayments);

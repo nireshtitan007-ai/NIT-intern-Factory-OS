@@ -1,7 +1,7 @@
 import { Schema, model, Document, Types } from 'mongoose';
 import { integerPaiseValidator } from '../utils/money';
 
-export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED';
 
 export interface IInvoiceItem {
   productId: Types.ObjectId;
@@ -9,6 +9,7 @@ export interface IInvoiceItem {
   productName: string;
   hsnCode: string;
   quantity: number;
+  dispatchedQty?: number;
   unitPrice: number;
   unitPricePaise?: number;
   taxableAmount: number;
@@ -56,7 +57,13 @@ export interface IInvoice extends Document {
   balanceDuePaise?: number;
   paymentStatus: PaymentStatus;
   isDispatched: boolean;
+  dispatchStatus?: 'PENDING' | 'PARTIALLY_DISPATCHED' | 'DISPATCHED';
   dispatchDate?: Date;
+  isCancelled?: boolean;
+  cancelledAt?: Date;
+  cancellationReason?: string;
+  creditNoteId?: Types.ObjectId;
+  creditNoteNumber?: string;
   dueDate: Date;
   createdAt: Date;
 }
@@ -67,6 +74,7 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
   productName: { type: String, required: true },
   hsnCode: { type: String, default: '19059040' },
   quantity: { type: Number, required: true },
+  dispatchedQty: { type: Number, default: 0 },
   unitPrice: { type: Number, required: true },
   unitPricePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   taxableAmount: { type: Number, required: true },
@@ -115,12 +123,23 @@ const InvoiceSchema = new Schema<IInvoice>({
   paymentStatus: { 
     type: String, 
     required: true, 
-    enum: ['UNPAID', 'PARTIALLY_PAID', 'PAID'],
+    enum: ['UNPAID', 'PARTIALLY_PAID', 'PAID', 'CANCELLED'],
     default: 'UNPAID',
     index: true 
   },
   isDispatched: { type: Boolean, default: false },
+  dispatchStatus: { 
+    type: String, 
+    enum: ['PENDING', 'PARTIALLY_DISPATCHED', 'DISPATCHED'], 
+    default: 'PENDING', 
+    index: true 
+  },
   dispatchDate: { type: Date },
+  isCancelled: { type: Boolean, default: false, index: true },
+  cancelledAt: { type: Date },
+  cancellationReason: { type: String },
+  creditNoteId: { type: Schema.Types.ObjectId, ref: 'CreditNote' },
+  creditNoteNumber: { type: String },
   dueDate: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
   createdAt: { type: Date, default: Date.now, index: true }
 });
