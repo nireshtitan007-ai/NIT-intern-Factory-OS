@@ -18,7 +18,9 @@ import {
   Invoice, 
   Payment, 
   AuditLog,
-  Settings 
+  Settings,
+  Supplier,
+  CreditNote 
 } from '../models';
 import { StockLedgerService } from '../services/stockLedger.service';
 
@@ -39,7 +41,9 @@ export async function seedBenchmarkData() {
       Invoice.deleteMany({}),
       Payment.deleteMany({}),
       AuditLog.deleteMany({}),
-      Settings.deleteMany({})
+      Settings.deleteMany({}),
+      Supplier.deleteMany({}),
+      CreditNote.deleteMany({})
     ]);
   } finally {
     process.env.ALLOW_LEDGER_RESET = 'false';
