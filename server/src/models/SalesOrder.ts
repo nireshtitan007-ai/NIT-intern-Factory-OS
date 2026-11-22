@@ -8,10 +8,13 @@ export interface ISalesOrderItem {
   productName: string;
   quantity: number;
   unitPrice: number;
+  unitPricePaise?: number;
   lineTotal: number;
+  lineTotalPaise?: number;
 }
 
 export interface ISalesOrder extends Document {
+  tenantId: string;
   orderNumber: string;
   salesmanId?: Types.ObjectId;
   salesmanName: string;
@@ -22,6 +25,7 @@ export interface ISalesOrder extends Document {
   customerStateCode: string;
   items: ISalesOrderItem[];
   totalAmount: number;
+  totalAmountPaise?: number;
   status: OrderStatus;
   offlineSyncId?: string;
   stockCheck: {
@@ -41,10 +45,13 @@ const SalesOrderItemSchema = new Schema<ISalesOrderItem>({
   productName: { type: String, required: true },
   quantity: { type: Number, required: true },
   unitPrice: { type: Number, required: true },
-  lineTotal: { type: Number, required: true }
+  unitPricePaise: { type: Number, default: 0 },
+  lineTotal: { type: Number, required: true },
+  lineTotalPaise: { type: Number, default: 0 }
 }, { _id: false });
 
 const SalesOrderSchema = new Schema<ISalesOrder>({
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
   orderNumber: { type: String, required: true, unique: true, index: true },
   salesmanId: { type: Schema.Types.ObjectId, ref: 'User' },
   salesmanName: { type: String, required: true },
@@ -55,6 +62,7 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
   customerStateCode: { type: String, required: true },
   items: [SalesOrderItemSchema],
   totalAmount: { type: Number, required: true },
+  totalAmountPaise: { type: Number, default: 0 },
   status: { 
     type: String, 
     required: true, 
@@ -62,17 +70,23 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
     default: 'SUBMITTED',
     index: true 
   },
-  offlineSyncId: { type: String, index: true, sparse: true },
+  offlineSyncId: { type: String, index: true },
   stockCheck: {
-    availableStock: { type: Number, default: 0 },
-    isSufficient: { type: Boolean, default: true },
+    availableStock: { type: Number, required: true },
+    isSufficient: { type: Boolean, required: true },
     shortageQuantity: { type: Number, default: 0 }
   },
   rejectionReason: { type: String },
   notes: { type: String },
   invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now, index: true }
+});
+
+SalesOrderSchema.pre('save', function (next) {
+  if (!this.totalAmountPaise && this.totalAmount) {
+    this.totalAmountPaise = Math.round(this.totalAmount * 100);
+  }
+  next();
 });
 
 export const SalesOrder = model<ISalesOrder>('SalesOrder', SalesOrderSchema);
-

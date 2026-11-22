@@ -7,14 +7,18 @@ export interface IPurchaseItem {
   quantity: number;
   unit: string;
   rate: number;
+  ratePaise?: number;
   total: number;
+  totalPaise?: number;
 }
 
 export interface IPurchase extends Document {
+  tenantId: string;
   purchaseNumber: string;
   supplierName: string;
   items: IPurchaseItem[];
   totalAmount: number;
+  totalAmountPaise?: number;
   status: 'RECEIVED';
   notes?: string;
   date: Date;
@@ -28,19 +32,29 @@ const PurchaseItemSchema = new Schema<IPurchaseItem>({
   quantity: { type: Number, required: true },
   unit: { type: String, required: true },
   rate: { type: Number, required: true },
-  total: { type: Number, required: true }
+  ratePaise: { type: Number, default: 0 },
+  total: { type: Number, required: true },
+  totalPaise: { type: Number, default: 0 }
 }, { _id: false });
 
 const PurchaseSchema = new Schema<IPurchase>({
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
   purchaseNumber: { type: String, required: true, unique: true, index: true },
   supplierName: { type: String, required: true },
   items: [PurchaseItemSchema],
   totalAmount: { type: Number, required: true },
+  totalAmountPaise: { type: Number, default: 0 },
   status: { type: String, default: 'RECEIVED' },
   notes: { type: String },
   date: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
 
-export const Purchase = model<IPurchase>('Purchase', PurchaseSchema);
+PurchaseSchema.pre('save', function (next) {
+  if (!this.totalAmountPaise && this.totalAmount) {
+    this.totalAmountPaise = Math.round(this.totalAmount * 100);
+  }
+  next();
+});
 
+export const Purchase = model<IPurchase>('Purchase', PurchaseSchema);

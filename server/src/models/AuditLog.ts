@@ -1,6 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IAuditLog extends Document {
+  tenantId: string;
   action: string;
   entityType: string;
   entityId: string;
@@ -12,6 +13,7 @@ export interface IAuditLog extends Document {
 }
 
 const AuditLogSchema = new Schema<IAuditLog>({
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
   action: { type: String, required: true, index: true },
   entityType: { type: String, required: true, index: true },
   entityId: { type: String, required: true, index: true },
@@ -23,4 +25,3 @@ const AuditLogSchema = new Schema<IAuditLog>({
 });
 
 export const AuditLog = model<IAuditLog>('AuditLog', AuditLogSchema);
-

@@ -9,12 +9,12 @@ import {
   WifiOff, 
   Play, 
   RotateCcw,
-  MessageSquare,
-  LogOut,
-  UserCheck,
-  ShieldCheck,
-  Compass,
-  User
+  MessageSquare, 
+  LogOut, 
+  ShieldCheck, 
+  Compass, 
+  User,
+  Target
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,6 +24,7 @@ interface NavbarProps {
   onToggleOffline: () => void;
   onRunBenchmark: () => void;
   onSeedData: () => void;
+  onOpenPitch?: () => void;
   isProcessing: boolean;
   currentUser?: AppUser | null;
   onLogout?: () => void;
@@ -39,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleOffline,
   onRunBenchmark,
   onSeedData,
+  onOpenPitch,
   isProcessing,
   currentUser,
   onLogout,
@@ -86,6 +88,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Operational Controls & Role Status */}
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Pitch Deck Button */}
+            {onOpenPitch && (
+              <button
+                onClick={onOpenPitch}
+                title="Open Executive Pitch Deck & Walkthrough"
+                className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/40 hover:bg-amber-500/30 text-xs font-bold transition shadow-sm"
+              >
+                <Target className="w-3.5 h-3.5 text-amber-300" />
+                <span>Pitch Deck</span>
+              </button>
+            )}
+
             {/* Authenticated User Status */}
             {currentUser && (
               <button

@@ -3,23 +3,27 @@ import { Schema, model, Document } from 'mongoose';
 export type CustomerType = 'RETAILER' | 'DISTRIBUTOR';
 
 export interface ICustomer extends Document {
+  tenantId: string;
   code: string;
   name: string;
   type: CustomerType;
-  state: string; // e.g. 'Tamil Nadu' or 'Karnataka'
-  stateCode: string; // e.g. '33' or '29'
+  state: string;
+  stateCode: string;
   gstin?: string;
   address: string;
   city: string;
   phone: string;
   creditLimit: number;
+  creditLimitPaise?: number;
   outstandingBalance: number;
+  outstandingBalancePaise?: number;
   assignedSalesmanId?: string;
   createdAt: Date;
 }
 
 const CustomerSchema = new Schema<ICustomer>({
-  code: { type: String, required: true, unique: true, index: true },
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  code: { type: String, required: true, index: true },
   name: { type: String, required: true, index: true },
   type: { type: String, required: true, enum: ['RETAILER', 'DISTRIBUTOR'] },
   state: { type: String, required: true },
@@ -29,10 +33,19 @@ const CustomerSchema = new Schema<ICustomer>({
   city: { type: String, default: '' },
   phone: { type: String, default: '' },
   creditLimit: { type: Number, default: 50000 },
+  creditLimitPaise: { type: Number, default: 5000000 },
   outstandingBalance: { type: Number, default: 0 },
+  outstandingBalancePaise: { type: Number, default: 0 },
   assignedSalesmanId: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 
-export const Customer = model<ICustomer>('Customer', CustomerSchema);
+CustomerSchema.index({ tenantId: 1, code: 1 }, { unique: true });
 
+CustomerSchema.pre('save', function (next) {
+  if (!this.creditLimitPaise && this.creditLimit) this.creditLimitPaise = Math.round(this.creditLimit * 100);
+  if (!this.outstandingBalancePaise && this.outstandingBalance !== undefined) this.outstandingBalancePaise = Math.round(this.outstandingBalance * 100);
+  next();
+});
+
+export const Customer = model<ICustomer>('Customer', CustomerSchema);

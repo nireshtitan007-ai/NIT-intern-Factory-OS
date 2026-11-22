@@ -13,8 +13,15 @@ import {
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
 import { RealtimeService } from './realtime.service';
+import { 
+  rupeesToPaise, 
+  paiseToRupees, 
+  calculateGSTPaise, 
+  validatePaymentPaise 
+} from '../utils/money';
 
 export interface CreateOrderParams {
+  tenantId?: string;
   customerId: string;
   salesmanName?: string;
   salesmanId?: string;
@@ -33,31 +40,39 @@ export class SalesOrderService {
    * Preserves customer's requested quantity even during shortage.
    */
   static async createOrder(params: CreateOrderParams): Promise<ISalesOrder> {
-    // Idempotent deduplication for offline sync
-    if (params.offlineSyncId) {
-      const existing = await SalesOrder.findOne({ offlineSyncId: params.offlineSyncId });
-      if (existing) return existing;
-    }
-
     const customer = await Customer.findById(params.customerId);
     if (!customer) throw new Error(`Customer with ID ${params.customerId} not found`);
 
-    const count = await SalesOrder.countDocuments();
+    const tenantId = params.tenantId || customer.tenantId || 'TENANT_NASH_FOODS';
+
+    // Idempotent deduplication for offline sync
+    if (params.offlineSyncId) {
+      const existing = await SalesOrder.findOne({ tenantId, offlineSyncId: params.offlineSyncId });
+      if (existing) return existing;
+    }
+
+    const count = await SalesOrder.countDocuments({ tenantId });
     const orderNumber = `SO-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
 
     const orderItems: any[] = [];
-    let totalAmount = 0;
+    let totalAmountPaise = 0;
     let minAvailableStock = Infinity;
     let totalShortage = 0;
     let isSufficient = true;
 
     for (const item of params.items) {
-      const product = await Product.findOne({ code: item.productCode.toUpperCase() });
+      const product = await Product.findOne({ 
+        tenantId, 
+        code: item.productCode.toUpperCase() 
+      }) || await Product.findOne({ code: item.productCode.toUpperCase() });
+      
       if (!product) throw new Error(`Product with code ${item.productCode} not found`);
 
       const unitPrice = item.unitPrice !== undefined ? item.unitPrice : product.sellingPrice;
-      const lineTotal = Math.round(item.quantity * unitPrice * 100) / 100;
-      totalAmount += lineTotal;
+      const unitPricePaise = rupeesToPaise(unitPrice);
+      const lineTotalPaise = item.quantity * unitPricePaise;
+      const lineTotal = paiseToRupees(lineTotalPaise);
+      totalAmountPaise += lineTotalPaise;
 
       const availableStock = product.currentStock;
       if (availableStock < minAvailableStock) minAvailableStock = availableStock;
@@ -73,11 +88,16 @@ export class SalesOrderService {
         productName: product.name,
         quantity: item.quantity,
         unitPrice,
-        lineTotal
+        unitPricePaise,
+        lineTotal,
+        lineTotalPaise
       });
     }
 
+    const totalAmount = paiseToRupees(totalAmountPaise);
+
     const order = new SalesOrder({
+      tenantId,
       orderNumber,
       salesmanId: params.salesmanId ? new Types.ObjectId(params.salesmanId) : undefined,
       salesmanName: params.salesmanName || 'Field Salesman',
@@ -88,6 +108,7 @@ export class SalesOrderService {
       customerStateCode: customer.stateCode,
       items: orderItems,
       totalAmount,
+      totalAmountPaise,
       status: 'SUBMITTED',
       offlineSyncId: params.offlineSyncId,
       stockCheck: {
@@ -102,6 +123,7 @@ export class SalesOrderService {
     await order.save();
 
     await AuditLog.create({
+      tenantId,
       action: 'SALES_ORDER_CREATED',
       entityType: 'SalesOrder',
       entityId: order._id.toString(),
@@ -111,6 +133,7 @@ export class SalesOrderService {
         orderNumber,
         customerName: customer.name,
         totalAmount,
+        totalAmountPaise,
         isSufficient,
         shortageQuantity: totalShortage
       }
@@ -136,6 +159,7 @@ export class SalesOrderService {
     await order.save();
 
     await AuditLog.create({
+      tenantId: order.tenantId,
       action: 'SALES_ORDER_REJECTED',
       entityType: 'SalesOrder',
       entityId: order._id.toString(),
@@ -153,7 +177,7 @@ export class SalesOrderService {
   }
 
   /**
-   * Approves a sales order and generates a GST-compliant tax invoice.
+   * Approves a sales order and generates a GST-compliant tax invoice using integer paise math.
    */
   static async approveOrder(orderId: string, approverName: string = 'Admin'): Promise<{ order: ISalesOrder; invoice: IInvoice }> {
     const order = await SalesOrder.findById(orderId);
@@ -169,43 +193,32 @@ export class SalesOrderService {
     const factoryState = 'Tamil Nadu';
     const isInterState = customer.state.trim().toLowerCase() !== factoryState.toLowerCase();
 
-    const invoiceCount = await Invoice.countDocuments();
+    const tenantId = order.tenantId || 'TENANT_NASH_FOODS';
+    const invoiceCount = await Invoice.countDocuments({ tenantId });
     const financialYear = '2024-25';
     const invoiceNumber = `INV/${financialYear}/${String(invoiceCount + 1).padStart(3, '0')}`;
 
     const invoiceItems: any[] = [];
-    let taxableValue = 0;
-    let cgstTotal = 0;
-    let sgstTotal = 0;
-    let igstTotal = 0;
+    let taxableValuePaise = 0;
+    let cgstTotalPaise = 0;
+    let sgstTotalPaise = 0;
+    let igstTotalPaise = 0;
+    let grandTotalPaise = 0;
 
     for (const item of order.items) {
       const product = await Product.findById(item.productId);
       const hsnCode = product ? product.hsnCode : '19059040';
-      const itemTaxable = Math.round(item.quantity * item.unitPrice * 100) / 100;
-      taxableValue += itemTaxable;
+      const unitPricePaise = item.unitPricePaise || rupeesToPaise(item.unitPrice);
+      const itemTaxablePaise = item.quantity * unitPricePaise;
+      
+      const gstRate = 5; // standard food rate for Murukku 200g
+      const gst = calculateGSTPaise(itemTaxablePaise, gstRate, isInterState);
 
-      let cgstRate = 0;
-      let cgstAmount = 0;
-      let sgstRate = 0;
-      let sgstAmount = 0;
-      let igstRate = 0;
-      let igstAmount = 0;
-
-      if (isInterState) {
-        igstRate = 5;
-        igstAmount = Math.round((itemTaxable * 0.05) * 100) / 100;
-        igstTotal += igstAmount;
-      } else {
-        cgstRate = 2.5;
-        cgstAmount = Math.round((itemTaxable * 0.025) * 100) / 100;
-        sgstRate = 2.5;
-        sgstAmount = Math.round((itemTaxable * 0.025) * 100) / 100;
-        cgstTotal += cgstAmount;
-        sgstTotal += sgstAmount;
-      }
-
-      const lineTotalWithTax = Math.round((itemTaxable + cgstAmount + sgstAmount + igstAmount) * 100) / 100;
+      taxableValuePaise += gst.taxablePaise;
+      cgstTotalPaise += gst.cgstPaise;
+      sgstTotalPaise += gst.sgstPaise;
+      igstTotalPaise += gst.igstPaise;
+      grandTotalPaise += gst.grandTotalPaise;
 
       invoiceItems.push({
         productId: item.productId,
@@ -214,20 +227,31 @@ export class SalesOrderService {
         hsnCode,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        taxableAmount: itemTaxable,
-        cgstRate,
-        cgstAmount,
-        sgstRate,
-        sgstAmount,
-        igstRate,
-        igstAmount,
-        totalAmount: lineTotalWithTax
+        unitPricePaise,
+        taxableAmount: paiseToRupees(gst.taxablePaise),
+        taxableAmountPaise: gst.taxablePaise,
+        cgstRate: isInterState ? 0 : 2.5,
+        cgstAmount: paiseToRupees(gst.cgstPaise),
+        cgstAmountPaise: gst.cgstPaise,
+        sgstRate: isInterState ? 0 : 2.5,
+        sgstAmount: paiseToRupees(gst.sgstPaise),
+        sgstAmountPaise: gst.sgstPaise,
+        igstRate: isInterState ? 5 : 0,
+        igstAmount: paiseToRupees(gst.igstPaise),
+        igstAmountPaise: gst.igstPaise,
+        totalAmount: paiseToRupees(gst.grandTotalPaise),
+        totalAmountPaise: gst.grandTotalPaise
       });
     }
 
-    const grandTotal = Math.round((taxableValue + cgstTotal + sgstTotal + igstTotal) * 100) / 100;
+    const taxableValue = paiseToRupees(taxableValuePaise);
+    const cgstTotal = paiseToRupees(cgstTotalPaise);
+    const sgstTotal = paiseToRupees(sgstTotalPaise);
+    const igstTotal = paiseToRupees(igstTotalPaise);
+    const grandTotal = paiseToRupees(grandTotalPaise);
 
     const invoice = new Invoice({
+      tenantId,
       invoiceNumber,
       salesOrderId: order._id,
       customerId: customer._id,
@@ -241,12 +265,19 @@ export class SalesOrderService {
       isInterState,
       items: invoiceItems,
       taxableValue,
+      taxableValuePaise,
       cgstTotal,
+      cgstTotalPaise,
       sgstTotal,
+      sgstTotalPaise,
       igstTotal,
+      igstTotalPaise,
       grandTotal,
+      grandTotalPaise,
       paidAmount: 0,
+      paidAmountPaise: 0,
       balanceDue: grandTotal,
+      balanceDuePaise: grandTotalPaise,
       paymentStatus: 'UNPAID',
       isDispatched: false,
       createdAt: new Date()
@@ -254,8 +285,11 @@ export class SalesOrderService {
 
     await invoice.save();
 
-    // Update customer outstanding balance
-    customer.outstandingBalance = Math.round((customer.outstandingBalance + grandTotal) * 100) / 100;
+    // Update customer outstanding balance with exact paise precision
+    const currentCustBalPaise = customer.outstandingBalancePaise || rupeesToPaise(customer.outstandingBalance);
+    const updatedCustBalPaise = currentCustBalPaise + grandTotalPaise;
+    customer.outstandingBalancePaise = updatedCustBalPaise;
+    customer.outstandingBalance = paiseToRupees(updatedCustBalPaise);
     await customer.save();
 
     order.status = 'INVOICED';
@@ -263,6 +297,7 @@ export class SalesOrderService {
     await order.save();
 
     await AuditLog.create({
+      tenantId,
       action: 'ORDER_APPROVED_AND_INVOICED',
       entityType: 'Invoice',
       entityId: invoice._id.toString(),
@@ -275,7 +310,8 @@ export class SalesOrderService {
         cgstTotal,
         sgstTotal,
         igstTotal,
-        grandTotal
+        grandTotal,
+        grandTotalPaise
       }
     });
 
@@ -303,8 +339,10 @@ export class SalesOrderService {
       throw new Error(`Invoice ${invoice.invoiceNumber} is already dispatched`);
     }
 
+    const tenantId = invoice.tenantId || 'TENANT_NASH_FOODS';
+
     for (const item of invoice.items) {
-      const product = await Product.findById(item.productId);
+      const product = await Product.findOne({ _id: item.productId, tenantId }) || await Product.findById(item.productId);
       if (!product) continue;
 
       if (product.currentStock < item.quantity) {
@@ -314,6 +352,7 @@ export class SalesOrderService {
       }
 
       await StockLedgerService.recordMovement({
+        tenantId,
         itemType: 'FINISHED_GOOD',
         itemId: product._id,
         itemCode: product.code,
@@ -336,6 +375,7 @@ export class SalesOrderService {
     await SalesOrder.findByIdAndUpdate(invoice.salesOrderId, { status: 'DISPATCHED' });
 
     await AuditLog.create({
+      tenantId,
       action: 'ORDER_DISPATCHED',
       entityType: 'Invoice',
       entityId: invoice._id.toString(),
@@ -360,7 +400,7 @@ export class SalesOrderService {
   }
 
   /**
-   * Records a payment against an invoice and recalculates customer outstanding balance
+   * Records a payment against an invoice and recalculates customer outstanding balance with paise invariants
    */
   static async recordPayment(params: {
     invoiceId: string;
@@ -376,10 +416,21 @@ export class SalesOrderService {
     const customer = await Customer.findById(invoice.customerId);
     if (!customer) throw new Error('Customer not found');
 
-    const count = await Payment.countDocuments();
+    const tenantId = invoice.tenantId || 'TENANT_NASH_FOODS';
+
+    const paymentAmountPaise = rupeesToPaise(params.amount);
+    const balanceDuePaise = invoice.balanceDuePaise || rupeesToPaise(invoice.balanceDue);
+
+    const validation = validatePaymentPaise(balanceDuePaise, paymentAmountPaise);
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Invalid payment amount');
+    }
+
+    const count = await Payment.countDocuments({ tenantId });
     const paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
 
     const payment = new Payment({
+      tenantId,
       paymentNumber,
       customerId: customer._id,
       customerCode: customer.code,
@@ -387,6 +438,7 @@ export class SalesOrderService {
       invoiceId: invoice._id,
       invoiceNumber: invoice.invoiceNumber,
       amount: params.amount,
+      amountPaise: paymentAmountPaise,
       paymentMethod: params.paymentMethod || 'BANK_TRANSFER',
       reference: params.reference,
       notes: params.notes,
@@ -395,23 +447,27 @@ export class SalesOrderService {
 
     await payment.save();
 
-    // Update Invoice balances
-    invoice.paidAmount = Math.round((invoice.paidAmount + params.amount) * 100) / 100;
-    invoice.balanceDue = Math.round((invoice.grandTotal - invoice.paidAmount) * 100) / 100;
-    if (invoice.balanceDue <= 0) {
-      invoice.balanceDue = 0;
-      invoice.paymentStatus = 'PAID';
-    } else {
-      invoice.paymentStatus = 'PARTIALLY_PAID';
-    }
+    // Update Invoice balances in paise
+    const currentPaidPaise = invoice.paidAmountPaise || rupeesToPaise(invoice.paidAmount);
+    const newPaidPaise = currentPaidPaise + paymentAmountPaise;
+    const newBalanceDuePaise = validation.newBalanceDuePaise;
+
+    invoice.paidAmountPaise = newPaidPaise;
+    invoice.paidAmount = paiseToRupees(newPaidPaise);
+    invoice.balanceDuePaise = newBalanceDuePaise;
+    invoice.balanceDue = paiseToRupees(newBalanceDuePaise);
+    invoice.paymentStatus = newBalanceDuePaise === 0 ? 'PAID' : 'PARTIALLY_PAID';
     await invoice.save();
 
-    // Update Customer outstanding balance
-    customer.outstandingBalance = Math.round((customer.outstandingBalance - params.amount) * 100) / 100;
-    if (customer.outstandingBalance < 0) customer.outstandingBalance = 0;
+    // Update Customer outstanding balance in paise
+    const currentCustBalPaise = customer.outstandingBalancePaise || rupeesToPaise(customer.outstandingBalance);
+    const newCustBalPaise = Math.max(0, currentCustBalPaise - paymentAmountPaise);
+    customer.outstandingBalancePaise = newCustBalPaise;
+    customer.outstandingBalance = paiseToRupees(newCustBalPaise);
     await customer.save();
 
     await AuditLog.create({
+      tenantId,
       action: 'PAYMENT_RECORDED',
       entityType: 'Payment',
       entityId: payment._id.toString(),
@@ -422,6 +478,7 @@ export class SalesOrderService {
         invoiceNumber: invoice.invoiceNumber,
         customerName: customer.name,
         amount: params.amount,
+        amountPaise: paymentAmountPaise,
         remainingInvoiceBalance: invoice.balanceDue,
         remainingCustomerOutstanding: customer.outstandingBalance
       }
@@ -438,4 +495,3 @@ export class SalesOrderService {
     return { payment, invoice, customer };
   }
 }
-

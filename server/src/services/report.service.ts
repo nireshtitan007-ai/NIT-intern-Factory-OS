@@ -5,8 +5,9 @@ export class ReportService {
   /**
    * Sales Register with customer, invoice, taxable, tax breakdown, and status
    */
-  static async getSalesRegister(startDate?: Date, endDate?: Date) {
+  static async getSalesRegister(startDate?: Date, endDate?: Date, tenantId?: string) {
     const query: any = {};
+    if (tenantId) query.tenantId = tenantId;
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = startDate;
@@ -35,8 +36,9 @@ export class ReportService {
   /**
    * GST Summary of Outward Supplies (mapped to GSTR-1 & GSTR-3B)
    */
-  static async getGSTSummary(startDate?: Date, endDate?: Date) {
+  static async getGSTSummary(startDate?: Date, endDate?: Date, tenantId?: string) {
     const query: any = {};
+    if (tenantId) query.tenantId = tenantId;
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = startDate;
@@ -94,8 +96,9 @@ export class ReportService {
   /**
    * Purchase Register
    */
-  static async getPurchaseRegister(startDate?: Date, endDate?: Date) {
+  static async getPurchaseRegister(startDate?: Date, endDate?: Date, tenantId?: string) {
     const query: any = {};
+    if (tenantId) query.tenantId = tenantId;
     if (startDate || endDate) {
       query.date = {};
       if (startDate) query.date.$gte = startDate;
@@ -108,8 +111,9 @@ export class ReportService {
   /**
    * Production Variance Report
    */
-  static async getProductionReport(startDate?: Date, endDate?: Date) {
+  static async getProductionReport(startDate?: Date, endDate?: Date, tenantId?: string) {
     const query: any = {};
+    if (tenantId) query.tenantId = tenantId;
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = startDate;
@@ -122,9 +126,13 @@ export class ReportService {
   /**
    * Customer Outstanding & Receivables Aging
    */
-  static async getOutstandingReceivables() {
-    const customers = await Customer.find().lean();
-    const unpaidInvoices = await Invoice.find({ balanceDue: { $gt: 0 } }).lean();
+  static async getOutstandingReceivables(tenantId?: string) {
+    const custFilter = tenantId ? { tenantId } : {};
+    const invFilter: any = { balanceDue: { $gt: 0 } };
+    if (tenantId) invFilter.tenantId = tenantId;
+
+    const customers = await Customer.find(custFilter).lean();
+    const unpaidInvoices = await Invoice.find(invFilter).lean();
 
     const now = new Date();
     const customerMap: Record<string, {
@@ -180,4 +188,3 @@ export class ReportService {
     return Object.values(customerMap).filter(c => c.totalOutstanding > 0);
   }
 }
-

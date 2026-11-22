@@ -10,8 +10,10 @@ import {
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
 import { RealtimeService } from './realtime.service';
+import { rupeesToPaise, paiseToRupees } from '../utils/money';
 
 export interface ExecuteProductionRunParams {
+  tenantId?: string;
   productId: string;
   batchExpectedOutput?: number; // defaults to BOM output (e.g. 200)
   materialIssues: Array<{
@@ -41,7 +43,9 @@ export class ProductionService {
     const product = await Product.findById(params.productId);
     if (!product) throw new Error(`Product with ID ${params.productId} not found`);
 
-    const bom = await BOM.findOne({ productId: product._id });
+    const tenantId = params.tenantId || product.tenantId || 'TENANT_NASH_FOODS';
+
+    const bom = await BOM.findOne({ tenantId, productId: product._id }) || await BOM.findOne({ productId: product._id });
     if (!bom) throw new Error(`No BOM found for product ${product.name}`);
 
     const batchExpectedOutput = params.batchExpectedOutput || bom.batchExpectedOutput;
@@ -56,11 +60,11 @@ export class ProductionService {
     const yieldVarianceFlagged = Math.abs(yieldVariancePercent) > tolerance;
 
     // Generate unique Run Number
-    const count = await ProductionRun.countDocuments();
+    const count = await ProductionRun.countDocuments({ tenantId });
     const runNumber = `PR-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
 
     const issuedMaterialsList: any[] = [];
-    let totalMaterialCost = 0;
+    let totalMaterialCostPaise = 0;
 
     // Map input issues by code
     const issueMap = new Map<string, number>();
@@ -82,8 +86,10 @@ export class ProductionService {
       const varianceFlagged = Math.abs(variancePercent) > tolerance;
 
       const unitCost = rawMaterial.currentWeightedRate || rawMaterial.standardRate;
-      const lineCost = Math.round(actualQty * unitCost * 100) / 100;
-      totalMaterialCost += lineCost;
+      const unitCostPaise = rawMaterial.currentWeightedRatePaise || rupeesToPaise(unitCost);
+      const lineCostPaise = Math.round(actualQty * unitCostPaise);
+      const lineCost = paiseToRupees(lineCostPaise);
+      totalMaterialCostPaise += lineCostPaise;
 
       issuedMaterialsList.push({
         materialId: rawMaterial._id,
@@ -93,7 +99,9 @@ export class ProductionService {
         actualQtyIssued: actualQty,
         unit: rawMaterial.unit,
         unitCost,
+        unitCostPaise,
         totalCost: lineCost,
+        totalCostPaise: lineCostPaise,
         varianceQty,
         variancePercent,
         varianceFlagged
@@ -101,6 +109,7 @@ export class ProductionService {
 
       // Stock Ledger Movement: Outward Issue of Raw Material
       await StockLedgerService.recordMovement({
+        tenantId,
         itemType: 'RAW_MATERIAL',
         itemId: rawMaterial._id,
         itemCode: rawMaterial.code,
@@ -118,6 +127,9 @@ export class ProductionService {
 
     // Process Packaging Materials (Pouches & Cartons)
     const pouchMaterial = await RawMaterial.findOne({ 
+      tenantId,
+      $or: [{ code: 'POUCH-200G' }, { name: { $regex: /pouch/i } }] 
+    }) || await RawMaterial.findOne({ 
       $or: [{ code: 'POUCH-200G' }, { name: { $regex: /pouch/i } }] 
     });
 
@@ -126,8 +138,10 @@ export class ProductionService {
       const totalPouchesUsed = actualOutputPackets + damagedPouches;
       const standardPouches = batchExpectedOutput;
       const pouchUnitCost = pouchMaterial.currentWeightedRate || pouchMaterial.standardRate;
-      const pouchTotalCost = Math.round(totalPouchesUsed * pouchUnitCost * 100) / 100;
-      totalMaterialCost += pouchTotalCost;
+      const pouchUnitCostPaise = pouchMaterial.currentWeightedRatePaise || rupeesToPaise(pouchUnitCost);
+      const pouchTotalCostPaise = Math.round(totalPouchesUsed * pouchUnitCostPaise);
+      const pouchTotalCost = paiseToRupees(pouchTotalCostPaise);
+      totalMaterialCostPaise += pouchTotalCostPaise;
 
       issuedMaterialsList.push({
         materialId: pouchMaterial._id,
@@ -137,13 +151,16 @@ export class ProductionService {
         actualQtyIssued: totalPouchesUsed,
         unit: pouchMaterial.unit,
         unitCost: pouchUnitCost,
+        unitCostPaise: pouchUnitCostPaise,
         totalCost: pouchTotalCost,
+        totalCostPaise: pouchTotalCostPaise,
         varianceQty: totalPouchesUsed - standardPouches,
         variancePercent: Math.round(((totalPouchesUsed - standardPouches) / standardPouches) * 10000) / 100,
         varianceFlagged: Math.abs(((totalPouchesUsed - standardPouches) / standardPouches) * 100) > tolerance
       });
 
       await StockLedgerService.recordMovement({
+        tenantId,
         itemType: 'PACKAGING',
         itemId: pouchMaterial._id,
         itemCode: pouchMaterial.code,
@@ -160,14 +177,19 @@ export class ProductionService {
     }
 
     const cartonMaterial = await RawMaterial.findOne({ 
+      tenantId,
+      $or: [{ code: 'CARTON-20PKT' }, { name: { $regex: /carton/i } }] 
+    }) || await RawMaterial.findOne({ 
       $or: [{ code: 'CARTON-20PKT' }, { name: { $regex: /carton/i } }] 
     });
 
     if (cartonMaterial && cartonsUsed > 0) {
       const standardCartons = Math.ceil(batchExpectedOutput / 20); // 10 cartons
       const cartonUnitCost = cartonMaterial.currentWeightedRate || cartonMaterial.standardRate;
-      const cartonTotalCost = Math.round(cartonsUsed * cartonUnitCost * 100) / 100;
-      totalMaterialCost += cartonTotalCost;
+      const cartonUnitCostPaise = cartonMaterial.currentWeightedRatePaise || rupeesToPaise(cartonUnitCost);
+      const cartonTotalCostPaise = Math.round(cartonsUsed * cartonUnitCostPaise);
+      const cartonTotalCost = paiseToRupees(cartonTotalCostPaise);
+      totalMaterialCostPaise += cartonTotalCostPaise;
 
       issuedMaterialsList.push({
         materialId: cartonMaterial._id,
@@ -177,13 +199,16 @@ export class ProductionService {
         actualQtyIssued: cartonsUsed,
         unit: cartonMaterial.unit,
         unitCost: cartonUnitCost,
+        unitCostPaise: cartonUnitCostPaise,
         totalCost: cartonTotalCost,
+        totalCostPaise: cartonTotalCostPaise,
         varianceQty: cartonsUsed - standardCartons,
         variancePercent: Math.round(((cartonsUsed - standardCartons) / standardCartons) * 10000) / 100,
         varianceFlagged: Math.abs(((cartonsUsed - standardCartons) / standardCartons) * 100) > tolerance
       });
 
       await StockLedgerService.recordMovement({
+        tenantId,
         itemType: 'PACKAGING',
         itemId: cartonMaterial._id,
         itemCode: cartonMaterial.code,
@@ -201,6 +226,7 @@ export class ProductionService {
 
     // Finished Goods Receipt
     await StockLedgerService.recordMovement({
+      tenantId,
       itemType: 'FINISHED_GOOD',
       itemId: product._id,
       itemCode: product.code,
@@ -215,15 +241,23 @@ export class ProductionService {
       createdBy: params.supervisorName || 'SUPERVISOR'
     });
 
-    // Costing calculation
+    // Costing calculation in paise
     const directLaborCost = params.directLaborCost || 0;
+    const directLaborCostPaise = rupeesToPaise(directLaborCost);
     const directOverheadCost = params.directOverheadCost || 0;
-    const totalProductionCost = Math.round((totalMaterialCost + directLaborCost + directOverheadCost) * 100) / 100;
-    const costPerPacket = actualOutputPackets > 0 
-      ? Math.round((totalProductionCost / actualOutputPackets) * 100) / 100 
+    const directOverheadCostPaise = rupeesToPaise(directOverheadCost);
+    
+    const totalProductionCostPaise = totalMaterialCostPaise + directLaborCostPaise + directOverheadCostPaise;
+    const totalMaterialCost = paiseToRupees(totalMaterialCostPaise);
+    const totalProductionCost = paiseToRupees(totalProductionCostPaise);
+
+    const costPerPacketPaise = actualOutputPackets > 0 
+      ? Math.round(totalProductionCostPaise / actualOutputPackets)
       : 0;
+    const costPerPacket = paiseToRupees(costPerPacketPaise);
 
     const productionRun = new ProductionRun({
+      tenantId,
       runNumber,
       productId: product._id,
       productCode: product.code,
@@ -237,10 +271,15 @@ export class ProductionService {
       yieldVarianceFlagged,
       materialsIssued: issuedMaterialsList,
       directLaborCost,
+      directLaborCostPaise,
       directOverheadCost,
+      directOverheadCostPaise,
       totalMaterialCost,
+      totalMaterialCostPaise,
       totalProductionCost,
+      totalProductionCostPaise,
       costPerPacket,
+      costPerPacketPaise,
       supervisorName: params.supervisorName || 'SUPERVISOR',
       notes: params.notes,
       status: 'COMPLETED',
@@ -250,6 +289,7 @@ export class ProductionService {
     await productionRun.save();
 
     await AuditLog.create({
+      tenantId,
       action: 'PRODUCTION_RUN_COMPLETED',
       entityType: 'ProductionRun',
       entityId: productionRun._id.toString(),
@@ -283,16 +323,28 @@ export class ProductionService {
     const run = await ProductionRun.findById(runId);
     if (!run) throw new Error(`Production run ${runId} not found`);
 
+    const laborCostPaise = rupeesToPaise(laborCost);
+    const overheadCostPaise = rupeesToPaise(overheadCost);
+    const totalMaterialCostPaise = run.totalMaterialCostPaise || rupeesToPaise(run.totalMaterialCost);
+    const totalProductionCostPaise = totalMaterialCostPaise + laborCostPaise + overheadCostPaise;
+
     run.directLaborCost = laborCost;
+    run.directLaborCostPaise = laborCostPaise;
     run.directOverheadCost = overheadCost;
-    run.totalProductionCost = Math.round((run.totalMaterialCost + laborCost + overheadCost) * 100) / 100;
-    run.costPerPacket = run.actualOutputPackets > 0 
-      ? Math.round((run.totalProductionCost / run.actualOutputPackets) * 100) / 100 
+    run.directOverheadCostPaise = overheadCostPaise;
+    run.totalProductionCostPaise = totalProductionCostPaise;
+    run.totalProductionCost = paiseToRupees(totalProductionCostPaise);
+    
+    const costPerPacketPaise = run.actualOutputPackets > 0 
+      ? Math.round(totalProductionCostPaise / run.actualOutputPackets)
       : 0;
+    run.costPerPacketPaise = costPerPacketPaise;
+    run.costPerPacket = paiseToRupees(costPerPacketPaise);
 
     await run.save();
 
     await AuditLog.create({
+      tenantId: run.tenantId,
       action: 'OVERHEADS_UPDATED',
       entityType: 'ProductionRun',
       entityId: run._id.toString(),
@@ -309,4 +361,3 @@ export class ProductionService {
     return run;
   }
 }
-

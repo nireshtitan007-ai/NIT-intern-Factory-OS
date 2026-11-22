@@ -9,6 +9,7 @@ import {
 } from '../models';
 
 export interface RecordMovementParams {
+  tenantId?: string;
   itemType: StockItemType;
   itemId: string | Types.ObjectId;
   itemCode: string;
@@ -27,16 +28,26 @@ export interface RecordMovementParams {
 export class StockLedgerService {
   /**
    * Appends an immutable stock movement to the ledger and updates cached stock.
+   * Strictly prevents negative inventory.
    */
   static async recordMovement(params: RecordMovementParams): Promise<IStockMovement> {
     const objectId = typeof params.itemId === 'string' ? new Types.ObjectId(params.itemId) : params.itemId;
+    const tenantId = params.tenantId || 'TENANT_NASH_FOODS';
     
-    // Find latest movement for this item to determine previous running balance
-    const lastMovement = await StockMovement.findOne({ itemId: objectId })
+    // Find latest movement for this item and tenant to determine previous running balance
+    const lastMovement = await StockMovement.findOne({ tenantId, itemId: objectId })
       .sort({ createdAt: -1, _id: -1 })
       .lean();
 
     const previousBalance = lastMovement ? lastMovement.runningBalance : 0;
+
+    // Strict Negative Stock Check for outward movements
+    if (params.quantity < 0 && (previousBalance + params.quantity < -0.0001)) {
+      throw new Error(
+        `INSUFFICIENT_STOCK: Cannot issue ${Math.abs(params.quantity)} ${params.unit} of ${params.itemCode}. Current stock is ${previousBalance} ${params.unit}. Negative inventory is prohibited.`
+      );
+    }
+
     // Round to 3 decimal places to prevent float precision drift
     const newRunningBalance = Math.round((previousBalance + params.quantity) * 1000) / 1000;
 
@@ -44,6 +55,7 @@ export class StockLedgerService {
     const totalCost = Math.round(Math.abs(params.quantity) * unitCost * 100) / 100;
 
     const movement = new StockMovement({
+      tenantId,
       itemType: params.itemType,
       itemId: objectId,
       itemCode: params.itemCode,
@@ -77,10 +89,10 @@ export class StockLedgerService {
   /**
    * Recomputes exact balance by aggregating all historical movements
    */
-  static async calculateBalanceFromLedger(itemId: string | Types.ObjectId): Promise<number> {
+  static async calculateBalanceFromLedger(itemId: string | Types.ObjectId, tenantId: string = 'TENANT_NASH_FOODS'): Promise<number> {
     const objectId = typeof itemId === 'string' ? new Types.ObjectId(itemId) : itemId;
     const result = await StockMovement.aggregate([
-      { $match: { itemId: objectId } },
+      { $match: { tenantId, itemId: objectId } },
       { $group: { _id: '$itemId', totalBalance: { $sum: '$quantity' } } }
     ]);
     return result.length > 0 ? Math.round(result[0].totalBalance * 1000) / 1000 : 0;
@@ -89,9 +101,10 @@ export class StockLedgerService {
   /**
    * Returns a complete stock summary report matching Section 4.4 / Section 4.6
    */
-  static async getStockSummary() {
-    const rawAndPackaging = await RawMaterial.find().sort({ category: 1, name: 1 }).lean();
-    const finishedGoods = await Product.find().sort({ name: 1 }).lean();
+  static async getStockSummary(tenantId?: string) {
+    const filter = tenantId ? { tenantId } : {};
+    const rawAndPackaging = await RawMaterial.find(filter).sort({ category: 1, name: 1 }).lean();
+    const finishedGoods = await Product.find(filter).sort({ name: 1 }).lean();
 
     const summary: Array<{
       id: string;
@@ -110,7 +123,10 @@ export class StockLedgerService {
 
     // Calculate movements for raw & packaging
     for (const mat of rawAndPackaging) {
-      const movements = await StockMovement.find({ itemId: mat._id }).lean();
+      const movements = await StockMovement.find({ 
+        itemId: mat._id,
+        ...(tenantId ? { tenantId } : {})
+      }).lean();
       let receipts = 0;
       let issues = 0;
       for (const m of movements) {
@@ -140,7 +156,10 @@ export class StockLedgerService {
 
     // Calculate movements for finished goods
     for (const prod of finishedGoods) {
-      const movements = await StockMovement.find({ itemId: prod._id }).lean();
+      const movements = await StockMovement.find({ 
+        itemId: prod._id,
+        ...(tenantId ? { tenantId } : {})
+      }).lean();
       let receipts = 0;
       let sales = 0;
       for (const m of movements) {
@@ -174,6 +193,7 @@ export class StockLedgerService {
    * Retrieves full ledger movements with optional filters
    */
   static async getLedgerMovements(filters: {
+    tenantId?: string;
     itemId?: string;
     itemType?: StockItemType;
     sourceDocType?: string;
@@ -181,6 +201,7 @@ export class StockLedgerService {
     endDate?: Date;
   }) {
     const query: any = {};
+    if (filters.tenantId) query.tenantId = filters.tenantId;
     if (filters.itemId) query.itemId = new Types.ObjectId(filters.itemId);
     if (filters.itemType) query.itemType = filters.itemType;
     if (filters.sourceDocType) query.sourceDocType = filters.sourceDocType;
@@ -193,4 +214,3 @@ export class StockLedgerService {
     return StockMovement.find(query).sort({ createdAt: -1, _id: -1 }).lean();
   }
 }
-

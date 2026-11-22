@@ -339,6 +339,7 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
     // First sync
     const res1 = await request(app)
       .post('/api/orders/sync-batch')
+      .set('Authorization', `Bearer ${salesmanToken}`)
       .send({ orders: [orderPayload] });
     expect(res1.status).toBe(200);
     expect(res1.body.count).toBe(1);
@@ -346,6 +347,7 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
     // Second sync with identical offlineSyncId
     const res2 = await request(app)
       .post('/api/orders/sync-batch')
+      .set('Authorization', `Bearer ${salesmanToken}`)
       .send({ orders: [orderPayload] });
     expect(res2.status).toBe(200);
     expect(res2.body.count).toBe(1);
@@ -368,6 +370,7 @@ describe('ZenLyft Commercial Multi-User ERP - Mandatory Acceptance Test Suite (S
     // Order creation succeeds even if OpenWA is offline/simulated
     const res = await request(app)
       .post('/api/orders')
+      .set('Authorization', `Bearer ${salesmanToken}`)
       .send({
         customerId: customer!._id.toString(),
         salesmanName: 'Salesman A (Tamil Nadu)',

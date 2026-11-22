@@ -9,17 +9,24 @@ export interface IInvoiceItem {
   hsnCode: string;
   quantity: number;
   unitPrice: number;
+  unitPricePaise?: number;
   taxableAmount: number;
+  taxableAmountPaise?: number;
   cgstRate: number;
   cgstAmount: number;
+  cgstAmountPaise?: number;
   sgstRate: number;
   sgstAmount: number;
+  sgstAmountPaise?: number;
   igstRate: number;
   igstAmount: number;
+  igstAmountPaise?: number;
   totalAmount: number;
+  totalAmountPaise?: number;
 }
 
 export interface IInvoice extends Document {
+  tenantId: string;
   invoiceNumber: string;
   salesOrderId: Types.ObjectId;
   customerId: Types.ObjectId;
@@ -33,12 +40,19 @@ export interface IInvoice extends Document {
   isInterState: boolean;
   items: IInvoiceItem[];
   taxableValue: number;
+  taxableValuePaise?: number;
   cgstTotal: number;
+  cgstTotalPaise?: number;
   sgstTotal: number;
+  sgstTotalPaise?: number;
   igstTotal: number;
+  igstTotalPaise?: number;
   grandTotal: number;
+  grandTotalPaise?: number;
   paidAmount: number;
+  paidAmountPaise?: number;
   balanceDue: number;
+  balanceDuePaise?: number;
   paymentStatus: PaymentStatus;
   isDispatched: boolean;
   dispatchDate?: Date;
@@ -53,17 +67,24 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
   hsnCode: { type: String, default: '19059040' },
   quantity: { type: Number, required: true },
   unitPrice: { type: Number, required: true },
+  unitPricePaise: { type: Number, default: 0 },
   taxableAmount: { type: Number, required: true },
+  taxableAmountPaise: { type: Number, default: 0 },
   cgstRate: { type: Number, default: 0 },
   cgstAmount: { type: Number, default: 0 },
+  cgstAmountPaise: { type: Number, default: 0 },
   sgstRate: { type: Number, default: 0 },
   sgstAmount: { type: Number, default: 0 },
+  sgstAmountPaise: { type: Number, default: 0 },
   igstRate: { type: Number, default: 0 },
   igstAmount: { type: Number, default: 0 },
-  totalAmount: { type: Number, required: true }
+  igstAmountPaise: { type: Number, default: 0 },
+  totalAmount: { type: Number, required: true },
+  totalAmountPaise: { type: Number, default: 0 }
 }, { _id: false });
 
 const InvoiceSchema = new Schema<IInvoice>({
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
   invoiceNumber: { type: String, required: true, unique: true, index: true },
   salesOrderId: { type: Schema.Types.ObjectId, ref: 'SalesOrder', required: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
@@ -77,12 +98,19 @@ const InvoiceSchema = new Schema<IInvoice>({
   isInterState: { type: Boolean, required: true },
   items: [InvoiceItemSchema],
   taxableValue: { type: Number, required: true },
+  taxableValuePaise: { type: Number, default: 0 },
   cgstTotal: { type: Number, default: 0 },
+  cgstTotalPaise: { type: Number, default: 0 },
   sgstTotal: { type: Number, default: 0 },
+  sgstTotalPaise: { type: Number, default: 0 },
   igstTotal: { type: Number, default: 0 },
+  igstTotalPaise: { type: Number, default: 0 },
   grandTotal: { type: Number, required: true },
+  grandTotalPaise: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
+  paidAmountPaise: { type: Number, default: 0 },
   balanceDue: { type: Number, required: true },
+  balanceDuePaise: { type: Number, default: 0 },
   paymentStatus: { 
     type: String, 
     required: true, 
@@ -96,5 +124,15 @@ const InvoiceSchema = new Schema<IInvoice>({
   createdAt: { type: Date, default: Date.now, index: true }
 });
 
-export const Invoice = model<IInvoice>('Invoice', InvoiceSchema);
+InvoiceSchema.pre('save', function (next) {
+  if (!this.taxableValuePaise && this.taxableValue) this.taxableValuePaise = Math.round(this.taxableValue * 100);
+  if (!this.cgstTotalPaise && this.cgstTotal) this.cgstTotalPaise = Math.round(this.cgstTotal * 100);
+  if (!this.sgstTotalPaise && this.sgstTotal) this.sgstTotalPaise = Math.round(this.sgstTotal * 100);
+  if (!this.igstTotalPaise && this.igstTotal) this.igstTotalPaise = Math.round(this.igstTotal * 100);
+  if (!this.grandTotalPaise && this.grandTotal) this.grandTotalPaise = Math.round(this.grandTotal * 100);
+  if (!this.balanceDuePaise && this.balanceDue !== undefined) this.balanceDuePaise = Math.round(this.balanceDue * 100);
+  if (!this.paidAmountPaise && this.paidAmount !== undefined) this.paidAmountPaise = Math.round(this.paidAmount * 100);
+  next();
+});
 
+export const Invoice = model<IInvoice>('Invoice', InvoiceSchema);

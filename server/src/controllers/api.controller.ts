@@ -11,7 +11,7 @@ import {
   Invoice, 
   Payment, 
   StockMovement, 
-  AuditLog,
+  AuditLog, 
   Inquiry 
 } from '../models';
 import { StockLedgerService } from '../services/stockLedger.service';
@@ -25,6 +25,12 @@ import { PDFInvoiceGenerator } from '../utils/pdfGenerator';
 import { CSVExportUtil } from '../utils/csvExport';
 import { seedBenchmarkData } from '../scripts/seedBenchmark';
 import { executeBenchmarkScenario } from '../scripts/runBenchmark';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
+
+function getTenantId(req: Request): string {
+  const authReq = req as AuthenticatedRequest;
+  return authReq.tenantId || authReq.user?.tenantId || 'TENANT_NASH_FOODS';
+}
 
 export class ApiController {
   // --- Benchmark & System ---
@@ -49,7 +55,8 @@ export class ApiController {
   // --- Users & Roles ---
   static async getUsers(req: Request, res: Response) {
     try {
-      const users = await User.find().lean();
+      const tenantId = getTenantId(req);
+      const users = await User.find({ tenantId }).lean();
       res.json({ success: true, users });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -59,7 +66,8 @@ export class ApiController {
   // --- Masters: Customers, Products, Raw Materials, BOMs ---
   static async getCustomers(req: Request, res: Response) {
     try {
-      const customers = await Customer.find().sort({ name: 1 }).lean();
+      const tenantId = getTenantId(req);
+      const customers = await Customer.find({ tenantId }).sort({ name: 1 }).lean();
       res.json({ success: true, customers });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -68,7 +76,8 @@ export class ApiController {
 
   static async getProducts(req: Request, res: Response) {
     try {
-      const products = await Product.find().sort({ name: 1 }).lean();
+      const tenantId = getTenantId(req);
+      const products = await Product.find({ tenantId }).sort({ name: 1 }).lean();
       res.json({ success: true, products });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -77,7 +86,8 @@ export class ApiController {
 
   static async getRawMaterials(req: Request, res: Response) {
     try {
-      const materials = await RawMaterial.find().sort({ category: 1, name: 1 }).lean();
+      const tenantId = getTenantId(req);
+      const materials = await RawMaterial.find({ tenantId }).sort({ category: 1, name: 1 }).lean();
       res.json({ success: true, materials });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -86,7 +96,8 @@ export class ApiController {
 
   static async getBOMs(req: Request, res: Response) {
     try {
-      const boms = await BOM.find().populate('productId').lean();
+      const tenantId = getTenantId(req);
+      const boms = await BOM.find({ tenantId }).populate('productId').lean();
       res.json({ success: true, boms });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -96,7 +107,8 @@ export class ApiController {
   // --- Inventory & Stock Ledger ---
   static async getStockSummary(req: Request, res: Response) {
     try {
-      const summary = await StockLedgerService.getStockSummary();
+      const tenantId = getTenantId(req);
+      const summary = await StockLedgerService.getStockSummary(tenantId);
       if (req.query.format === 'csv') {
         const csv = CSVExportUtil.arrayToCSV(summary);
         res.setHeader('Content-Type', 'text/csv');
@@ -111,7 +123,9 @@ export class ApiController {
 
   static async getStockLedger(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
       const movements = await StockLedgerService.getLedgerMovements({
+        tenantId,
         itemId: req.query.itemId as string,
         itemType: req.query.itemType as any,
         sourceDocType: req.query.sourceDocType as string
@@ -125,7 +139,8 @@ export class ApiController {
   // --- Purchasing ---
   static async getPurchases(req: Request, res: Response) {
     try {
-      const purchases = await Purchase.find().sort({ date: -1 }).lean();
+      const tenantId = getTenantId(req);
+      const purchases = await Purchase.find({ tenantId }).sort({ date: -1 }).lean();
       res.json({ success: true, purchases });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -134,7 +149,12 @@ export class ApiController {
 
   static async recordPurchase(req: Request, res: Response) {
     try {
-      const purchase = await PurchaseService.recordPurchase(req.body);
+      const tenantId = getTenantId(req);
+      const purchase = await PurchaseService.recordPurchase({
+        ...req.body,
+        tenantId,
+        createdBy: (req as AuthenticatedRequest).user?.name || req.body.createdBy
+      });
       res.status(201).json({ success: true, purchase });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -144,7 +164,8 @@ export class ApiController {
   // --- Production & BOM Runs ---
   static async getProductionRuns(req: Request, res: Response) {
     try {
-      const runs = await ProductionRun.find().sort({ createdAt: -1 }).lean();
+      const tenantId = getTenantId(req);
+      const runs = await ProductionRun.find({ tenantId }).sort({ createdAt: -1 }).lean();
       res.json({ success: true, runs });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -153,7 +174,12 @@ export class ApiController {
 
   static async executeProductionRun(req: Request, res: Response) {
     try {
-      const run = await ProductionService.executeRun(req.body);
+      const tenantId = getTenantId(req);
+      const run = await ProductionService.executeRun({
+        ...req.body,
+        tenantId,
+        supervisorName: (req as AuthenticatedRequest).user?.name || req.body.supervisorName
+      });
       res.status(201).json({ success: true, run });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -173,7 +199,8 @@ export class ApiController {
   // --- Sales Orders & Offline Sync ---
   static async getSalesOrders(req: Request, res: Response) {
     try {
-      const orders = await SalesOrder.find().sort({ createdAt: -1 }).lean();
+      const tenantId = getTenantId(req);
+      const orders = await SalesOrder.find({ tenantId }).sort({ createdAt: -1 }).lean();
       res.json({ success: true, orders });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -182,7 +209,14 @@ export class ApiController {
 
   static async createSalesOrder(req: Request, res: Response) {
     try {
-      const order = await SalesOrderService.createOrder(req.body);
+      const tenantId = getTenantId(req);
+      const user = (req as AuthenticatedRequest).user;
+      const order = await SalesOrderService.createOrder({
+        ...req.body,
+        tenantId,
+        salesmanId: user ? user._id.toString() : req.body.salesmanId,
+        salesmanName: user ? user.name : (req.body.salesmanName || 'Field Salesman')
+      });
       res.status(201).json({ success: true, order });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -191,11 +225,15 @@ export class ApiController {
 
   static async syncOfflineOrders(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
       const { orders } = req.body; // array of offline orders
       if (!Array.isArray(orders)) throw new Error('Orders must be an array');
       const synced: any[] = [];
       for (const orderData of orders) {
-        const order = await SalesOrderService.createOrder(orderData);
+        const order = await SalesOrderService.createOrder({
+          ...orderData,
+          tenantId
+        });
         synced.push(order);
       }
       res.json({ success: true, count: synced.length, synced });
@@ -206,7 +244,8 @@ export class ApiController {
 
   static async approveOrder(req: Request, res: Response) {
     try {
-      const result = await SalesOrderService.approveOrder(req.params.id, req.body.approverName);
+      const approverName = (req as AuthenticatedRequest).user?.name || req.body.approverName || 'Factory Admin';
+      const result = await SalesOrderService.approveOrder(req.params.id, approverName);
       res.json({ success: true, ...result });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -215,7 +254,8 @@ export class ApiController {
 
   static async rejectOrder(req: Request, res: Response) {
     try {
-      const { reason, rejectedBy } = req.body;
+      const rejectedBy = (req as AuthenticatedRequest).user?.name || req.body.rejectedBy || 'Factory Admin';
+      const { reason } = req.body;
       const order = await SalesOrderService.rejectOrder(req.params.id, reason, rejectedBy);
       res.json({ success: true, order });
     } catch (err: any) {
@@ -225,7 +265,8 @@ export class ApiController {
 
   static async dispatchOrder(req: Request, res: Response) {
     try {
-      const invoice = await SalesOrderService.dispatchOrder(req.params.id, req.body.dispatcherName);
+      const dispatcherName = (req as AuthenticatedRequest).user?.name || req.body.dispatcherName || 'Factory Admin';
+      const invoice = await SalesOrderService.dispatchOrder(req.params.id, dispatcherName);
       res.json({ success: true, invoice });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -235,7 +276,8 @@ export class ApiController {
   // --- Invoices & GST PDF ---
   static async getInvoices(req: Request, res: Response) {
     try {
-      const invoices = await Invoice.find().sort({ createdAt: -1 }).lean();
+      const tenantId = getTenantId(req);
+      const invoices = await Invoice.find({ tenantId }).sort({ createdAt: -1 }).lean();
       res.json({ success: true, invoices });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -244,7 +286,8 @@ export class ApiController {
 
   static async getInvoicePDF(req: Request, res: Response) {
     try {
-      const invoice = await Invoice.findById(req.params.id);
+      const tenantId = getTenantId(req);
+      const invoice = await Invoice.findOne({ _id: req.params.id, tenantId }) || await Invoice.findById(req.params.id);
       if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
       const pdfBuffer = await PDFInvoiceGenerator.generateInvoicePDF(invoice);
@@ -259,7 +302,8 @@ export class ApiController {
   // --- Payments ---
   static async getPayments(req: Request, res: Response) {
     try {
-      const payments = await Payment.find().sort({ date: -1 }).lean();
+      const tenantId = getTenantId(req);
+      const payments = await Payment.find({ tenantId }).sort({ date: -1 }).lean();
       res.json({ success: true, payments });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -268,7 +312,11 @@ export class ApiController {
 
   static async recordPayment(req: Request, res: Response) {
     try {
-      const result = await SalesOrderService.recordPayment(req.body);
+      const receivedBy = (req as AuthenticatedRequest).user?.name || req.body.receivedBy || 'Senior Accountant';
+      const result = await SalesOrderService.recordPayment({
+        ...req.body,
+        receivedBy
+      });
       res.status(201).json({ success: true, ...result });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
@@ -278,7 +326,8 @@ export class ApiController {
   // --- Reports (Section 4.6 & Auditor) ---
   static async getSalesRegister(req: Request, res: Response) {
     try {
-      const register = await ReportService.getSalesRegister();
+      const tenantId = getTenantId(req);
+      const register = await ReportService.getSalesRegister(undefined, undefined, tenantId);
       if (req.query.format === 'csv') {
         const csv = CSVExportUtil.arrayToCSV(register);
         res.setHeader('Content-Type', 'text/csv');
@@ -293,7 +342,8 @@ export class ApiController {
 
   static async getGSTSummary(req: Request, res: Response) {
     try {
-      const summary = await ReportService.getGSTSummary();
+      const tenantId = getTenantId(req);
+      const summary = await ReportService.getGSTSummary(undefined, undefined, tenantId);
       res.json({ success: true, summary });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -302,7 +352,8 @@ export class ApiController {
 
   static async getProductionReport(req: Request, res: Response) {
     try {
-      const runs = await ReportService.getProductionReport();
+      const tenantId = getTenantId(req);
+      const runs = await ReportService.getProductionReport(undefined, undefined, tenantId);
       if (req.query.format === 'csv') {
         const flatRuns = runs.map(r => ({
           runNumber: r.runNumber,
@@ -330,7 +381,8 @@ export class ApiController {
 
   static async getOutstanding(req: Request, res: Response) {
     try {
-      const outstanding = await ReportService.getOutstandingReceivables();
+      const tenantId = getTenantId(req);
+      const outstanding = await ReportService.getOutstandingReceivables(tenantId);
       res.json({ success: true, outstanding });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -340,13 +392,14 @@ export class ApiController {
   // --- Owner Overview Dashboard ---
   static async getOwnerOverview(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
       const [invoices, runs, rawMaterials, products, customers, payments] = await Promise.all([
-        Invoice.find().lean(),
-        ProductionRun.find().lean(),
-        RawMaterial.find().lean(),
-        Product.find().lean(),
-        Customer.find().lean(),
-        Payment.find().lean()
+        Invoice.find({ tenantId }).lean(),
+        ProductionRun.find({ tenantId }).lean(),
+        RawMaterial.find({ tenantId }).lean(),
+        Product.find({ tenantId }).lean(),
+        Customer.find({ tenantId }).lean(),
+        Payment.find({ tenantId }).lean()
       ]);
 
       const totalRevenue = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
@@ -356,7 +409,6 @@ export class ApiController {
       let totalRawStockVal = rawMaterials.reduce((acc, m) => acc + (m.currentStock * (m.currentWeightedRate || m.standardRate)), 0);
       let totalFGStockVal = products.reduce((acc, p) => acc + (p.currentStock * p.sellingPrice), 0);
 
-      // Latest production run variance
       const latestRun = runs.length > 0 ? runs[runs.length - 1] : null;
 
       res.json({
@@ -384,6 +436,7 @@ export class ApiController {
 
   static async getAdminOverview(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
       const [
         invoices,
         runs,
@@ -395,15 +448,15 @@ export class ApiController {
         users,
         auditLogs
       ] = await Promise.all([
-        Invoice.find().lean(),
-        ProductionRun.find().lean(),
-        RawMaterial.find().lean(),
-        Product.find().lean(),
-        Customer.find().lean(),
-        Payment.find().lean(),
-        SalesOrder.find().sort({ createdAt: -1 }).lean(),
-        User.find().lean(),
-        AuditLog.find().sort({ timestamp: -1 }).limit(20).lean()
+        Invoice.find({ tenantId }).lean(),
+        ProductionRun.find({ tenantId }).lean(),
+        RawMaterial.find({ tenantId }).lean(),
+        Product.find({ tenantId }).lean(),
+        Customer.find({ tenantId }).lean(),
+        Payment.find({ tenantId }).lean(),
+        SalesOrder.find({ tenantId }).sort({ createdAt: -1 }).lean(),
+        User.find({ tenantId }).lean(),
+        AuditLog.find({ tenantId }).sort({ timestamp: -1 }).limit(20).lean()
       ]);
 
       const totalRevenue = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
@@ -455,7 +508,8 @@ export class ApiController {
   // --- Audit Trail ---
   static async getAuditLogs(req: Request, res: Response) {
     try {
-      const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(100).lean();
+      const tenantId = getTenantId(req);
+      const logs = await AuditLog.find({ tenantId }).sort({ timestamp: -1 }).limit(100).lean();
       res.json({ success: true, logs });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -527,6 +581,7 @@ export class ApiController {
       });
 
       await AuditLog.create({
+        tenantId: 'TENANT_NASH_FOODS',
         action: 'INQUIRY_SUBMITTED',
         entityType: 'Inquiry',
         entityId: inquiry._id.toString(),
@@ -579,4 +634,3 @@ export class ApiController {
     }
   }
 }
-

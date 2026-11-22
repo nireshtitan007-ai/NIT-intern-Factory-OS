@@ -1,6 +1,7 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export interface IPayment extends Document {
+  tenantId: string;
   paymentNumber: string;
   customerId: Types.ObjectId;
   customerCode: string;
@@ -8,6 +9,7 @@ export interface IPayment extends Document {
   invoiceId: Types.ObjectId;
   invoiceNumber: string;
   amount: number;
+  amountPaise?: number;
   paymentMethod: string;
   reference?: string;
   date: Date;
@@ -16,6 +18,7 @@ export interface IPayment extends Document {
 }
 
 const PaymentSchema = new Schema<IPayment>({
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
   paymentNumber: { type: String, required: true, unique: true, index: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
   customerCode: { type: String, required: true },
@@ -23,6 +26,7 @@ const PaymentSchema = new Schema<IPayment>({
   invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true, index: true },
   invoiceNumber: { type: String, required: true },
   amount: { type: Number, required: true },
+  amountPaise: { type: Number, default: 0 },
   paymentMethod: { type: String, default: 'BANK_TRANSFER' },
   reference: { type: String },
   date: { type: Date, default: Date.now },
@@ -30,5 +34,11 @@ const PaymentSchema = new Schema<IPayment>({
   createdAt: { type: Date, default: Date.now }
 });
 
-export const Payment = model<IPayment>('Payment', PaymentSchema);
+PaymentSchema.pre('save', function (next) {
+  if (!this.amountPaise && this.amount) {
+    this.amountPaise = Math.round(this.amount * 100);
+  }
+  next();
+});
 
+export const Payment = model<IPayment>('Payment', PaymentSchema);

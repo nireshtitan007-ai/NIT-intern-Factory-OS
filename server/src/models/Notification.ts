@@ -10,6 +10,7 @@ export type NotificationTemplateType =
   | 'PRODUCTION_VARIANCE_ALERT';
 
 export interface INotification extends Document {
+  tenantId: string;
   recipientPhone: string;
   recipientName: string;
   templateType: NotificationTemplateType;
@@ -26,6 +27,7 @@ export interface INotification extends Document {
 }
 
 const NotificationSchema = new Schema<INotification>({
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
   recipientPhone: { type: String, required: true, index: true },
   recipientName: { type: String, required: true },
   templateType: { 
@@ -60,4 +62,3 @@ const NotificationSchema = new Schema<INotification>({
 });
 
 export const Notification = model<INotification>('Notification', NotificationSchema);
-

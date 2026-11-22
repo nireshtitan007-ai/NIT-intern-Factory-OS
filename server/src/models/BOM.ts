@@ -7,9 +7,11 @@ export interface IBOMItem {
   quantityPerBatch: number;
   unit: string;
   standardRate: number;
+  standardRatePaise?: number;
 }
 
 export interface IBOM extends Document {
+  tenantId: string;
   productId: Types.ObjectId;
   productCode: string;
   productName: string;
@@ -27,11 +29,13 @@ const BOMItemSchema = new Schema<IBOMItem>({
   materialName: { type: String, required: true },
   quantityPerBatch: { type: Number, required: true },
   unit: { type: String, required: true },
-  standardRate: { type: Number, required: true }
+  standardRate: { type: Number, required: true },
+  standardRatePaise: { type: Number, default: 0 }
 }, { _id: false });
 
 const BOMSchema = new Schema<IBOM>({
-  productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true, unique: true },
+  tenantId: { type: String, required: true, default: 'TENANT_NASH_FOODS', index: true },
+  productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
   productCode: { type: String, required: true },
   productName: { type: String, required: true },
   batchExpectedOutput: { type: Number, required: true, default: 200 },
@@ -42,5 +46,6 @@ const BOMSchema = new Schema<IBOM>({
   createdAt: { type: Date, default: Date.now }
 });
 
-export const BOM = model<IBOM>('BOM', BOMSchema);
+BOMSchema.index({ tenantId: 1, productId: 1 }, { unique: true });
 
+export const BOM = model<IBOM>('BOM', BOMSchema);

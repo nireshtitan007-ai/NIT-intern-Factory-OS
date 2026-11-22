@@ -1,8 +1,10 @@
 import { Types } from 'mongoose';
 import { Purchase, IPurchase, RawMaterial, AuditLog } from '../models';
 import { StockLedgerService } from './stockLedger.service';
+import { rupeesToPaise, paiseToRupees } from '../utils/money';
 
 export interface CreatePurchaseParams {
+  tenantId?: string;
   supplierName: string;
   items: Array<{
     materialCode: string;
@@ -22,20 +24,27 @@ export class PurchaseService {
    * 3. Creates Purchase document and audit log
    */
   static async recordPurchase(params: CreatePurchaseParams): Promise<IPurchase> {
-    const count = await Purchase.countDocuments();
+    const tenantId = params.tenantId || 'TENANT_NASH_FOODS';
+    const count = await Purchase.countDocuments({ tenantId });
     const purchaseNumber = `PO-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
 
     const purchaseItems: any[] = [];
-    let grandTotal = 0;
+    let grandTotalPaise = 0;
 
     for (const item of params.items) {
-      const material = await RawMaterial.findOne({ code: item.materialCode.toUpperCase() });
+      const material = await RawMaterial.findOne({ 
+        tenantId, 
+        code: item.materialCode.toUpperCase() 
+      }) || await RawMaterial.findOne({ code: item.materialCode.toUpperCase() });
+
       if (!material) {
         throw new Error(`Material with code ${item.materialCode} not found`);
       }
 
-      const lineTotal = Math.round(item.quantity * item.rate * 100) / 100;
-      grandTotal += lineTotal;
+      const ratePaise = rupeesToPaise(item.rate);
+      const lineTotalPaise = Math.round(item.quantity * ratePaise);
+      const lineTotal = paiseToRupees(lineTotalPaise);
+      grandTotalPaise += lineTotalPaise;
 
       purchaseItems.push({
         materialId: material._id,
@@ -44,7 +53,9 @@ export class PurchaseService {
         quantity: item.quantity,
         unit: material.unit,
         rate: item.rate,
-        total: lineTotal
+        ratePaise,
+        total: lineTotal,
+        totalPaise: lineTotalPaise
       });
 
       // Update Weighted Average Cost
@@ -57,11 +68,14 @@ export class PurchaseService {
         : item.rate;
 
       material.currentWeightedRate = newWeightedRate;
+      material.currentWeightedRatePaise = rupeesToPaise(newWeightedRate);
       material.standardRate = item.rate;
+      material.standardRatePaise = ratePaise;
       await material.save();
 
       // Record in Stock Movement Ledger
       await StockLedgerService.recordMovement({
+        tenantId,
         itemType: material.category,
         itemId: material._id,
         itemCode: material.code,
@@ -77,11 +91,15 @@ export class PurchaseService {
       });
     }
 
+    const grandTotal = paiseToRupees(grandTotalPaise);
+
     const purchase = new Purchase({
+      tenantId,
       purchaseNumber,
       supplierName: params.supplierName,
       items: purchaseItems,
       totalAmount: grandTotal,
+      totalAmountPaise: grandTotalPaise,
       notes: params.notes,
       date: params.date || new Date(),
       status: 'RECEIVED'
@@ -90,6 +108,7 @@ export class PurchaseService {
     await purchase.save();
 
     await AuditLog.create({
+      tenantId,
       action: 'PURCHASE_RECORDED',
       entityType: 'Purchase',
       entityId: purchase._id.toString(),
@@ -99,6 +118,7 @@ export class PurchaseService {
         purchaseNumber,
         supplierName: params.supplierName,
         totalAmount: grandTotal,
+        totalAmountPaise: grandTotalPaise,
         itemsCount: purchaseItems.length
       }
     });
@@ -106,4 +126,3 @@ export class PurchaseService {
     return purchase;
   }
 }
-

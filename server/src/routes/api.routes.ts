@@ -1,87 +1,113 @@
 import { Router } from 'express';
 import { ApiController } from '../controllers/api.controller';
 import { AuthController } from '../controllers/auth.controller';
-import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { 
+  authenticate, 
+  requireAdmin, 
+  requireRoles, 
+  requirePermission, 
+  requireNonProduction 
+} from '../middleware/auth.middleware';
+import { validateBody } from '../middleware/validation.middleware';
+import { 
+  loginSchema, 
+  salesmanMobileLoginSchema, 
+  createUserSchema, 
+  resetPasswordSchema, 
+  updateProfileSchema, 
+  changePasswordSchema 
+} from '../schemas/auth.schema';
+import { 
+  createOrderSchema, 
+  syncOfflineBatchSchema, 
+  approveOrderSchema, 
+  rejectOrderSchema, 
+  dispatchOrderSchema 
+} from '../schemas/order.schema';
+import { recordPurchaseSchema } from '../schemas/purchase.schema';
+import { executeProductionRunSchema, updateOverheadsSchema } from '../schemas/production.schema';
+import { recordPaymentSchema } from '../schemas/payment.schema';
+import { submitInquirySchema, updateInquiryStatusSchema } from '../schemas/inquiry.schema';
 import { RealtimeService } from '../services/realtime.service';
 
 const router = Router();
 
 // --- Authentication & Multi-User Identity ---
-router.post('/auth/login', AuthController.login);
-router.post('/auth/admin-login', AuthController.adminLogin);
-router.post('/auth/salesman-mobile-login', AuthController.salesmanMobileLogin);
+router.post('/auth/login', validateBody(loginSchema), AuthController.login);
+router.post('/auth/admin-login', validateBody(loginSchema), AuthController.adminLogin);
+router.post('/auth/salesman-mobile-login', validateBody(salesmanMobileLoginSchema), AuthController.salesmanMobileLogin);
 router.get('/auth/me', authenticate, AuthController.me);
-router.put('/auth/profile', authenticate, AuthController.updateProfile);
-router.put('/auth/change-password', authenticate, AuthController.changePassword);
+router.put('/auth/profile', authenticate, validateBody(updateProfileSchema), AuthController.updateProfile);
+router.put('/auth/change-password', authenticate, validateBody(changePasswordSchema), AuthController.changePassword);
 router.get('/auth/users', authenticate, requireAdmin, AuthController.listUsers);
-router.post('/auth/users', authenticate, requireAdmin, AuthController.createUser);
+router.post('/auth/users', authenticate, requireAdmin, validateBody(createUserSchema), AuthController.createUser);
 router.put('/auth/users/:id/status', authenticate, requireAdmin, AuthController.toggleUserStatus);
-router.put('/auth/users/:id/reset-password', authenticate, requireAdmin, AuthController.resetPassword);
+router.put('/auth/users/:id/reset-password', authenticate, requireAdmin, validateBody(resetPasswordSchema), AuthController.resetPassword);
 
-// --- Realtime Server-Sent Events (SSE) ---
-router.get('/realtime/events', (req, res) => RealtimeService.subscribe(res));
+// --- Realtime Server-Sent Events (SSE) (Requires Authentication) ---
+router.get('/realtime/events', authenticate, (req, res) => RealtimeService.subscribe(res));
 
-// --- Benchmark & System Initialization ---
-router.post('/benchmark/seed', ApiController.seedBenchmark);
-router.post('/benchmark/run', ApiController.runBenchmark);
+// --- Benchmark & System Initialization (Protected by Admin + Non-Production Flag) ---
+router.post('/benchmark/seed', authenticate, requireAdmin, requireNonProduction, ApiController.seedBenchmark);
+router.post('/benchmark/run', authenticate, requireAdmin, requireNonProduction, ApiController.runBenchmark);
 
-// --- Legacy / Public Users List ---
-router.get('/users', ApiController.getUsers);
+// --- Legacy / Internal Users Listing ---
+router.get('/users', authenticate, requireRoles('admin', 'owner', 'auditor'), ApiController.getUsers);
 
-// --- Master Data (Shared across all modules) ---
-router.get('/customers', ApiController.getCustomers);
-router.get('/products', ApiController.getProducts);
-router.get('/raw-materials', ApiController.getRawMaterials);
-router.get('/boms', ApiController.getBOMs);
+// --- Master Data (Shared across operational modules) ---
+router.get('/customers', authenticate, requirePermission('customers:read'), ApiController.getCustomers);
+router.get('/products', authenticate, requirePermission('products:read'), ApiController.getProducts);
+router.get('/raw-materials', authenticate, requirePermission('raw_materials:read'), ApiController.getRawMaterials);
+router.get('/boms', authenticate, requirePermission('boms:read'), ApiController.getBOMs);
 
 // --- Authoritative Central Inventory ---
-router.get('/inventory/stock-summary', ApiController.getStockSummary);
-router.get('/inventory/ledger', ApiController.getStockLedger);
+router.get('/inventory/stock-summary', authenticate, requirePermission('inventory:read'), ApiController.getStockSummary);
+router.get('/inventory/ledger', authenticate, requirePermission('inventory:read'), ApiController.getStockLedger);
 
 // --- Procurement & Purchases ---
-router.get('/purchases', ApiController.getPurchases);
-router.post('/purchases', ApiController.recordPurchase);
+router.get('/purchases', authenticate, requirePermission('purchases:read'), ApiController.getPurchases);
+router.post('/purchases', authenticate, requirePermission('purchases:create'), validateBody(recordPurchaseSchema), ApiController.recordPurchase);
 
 // --- Production & Manufacturing ---
-router.get('/production/runs', ApiController.getProductionRuns);
-router.post('/production/runs', ApiController.executeProductionRun);
-router.put('/production/runs/:id/costs', ApiController.updateRunOverheads);
+router.get('/production/runs', authenticate, requirePermission('production:read'), ApiController.getProductionRuns);
+router.post('/production/runs', authenticate, requirePermission('production:create'), validateBody(executeProductionRunSchema), ApiController.executeProductionRun);
+router.put('/production/runs/:id/costs', authenticate, requirePermission('production:costs'), validateBody(updateOverheadsSchema), ApiController.updateRunOverheads);
 
 // --- Sales Orders & Offline Sync ---
-router.get('/orders', ApiController.getSalesOrders);
-router.post('/orders', ApiController.createSalesOrder);
-router.post('/orders/sync-batch', ApiController.syncOfflineOrders);
-router.put('/orders/:id/approve', ApiController.approveOrder);
-router.put('/orders/:id/reject', ApiController.rejectOrder);
-router.put('/orders/:id/dispatch', ApiController.dispatchOrder);
+router.get('/orders', authenticate, requirePermission('orders:read'), ApiController.getSalesOrders);
+router.post('/orders', authenticate, requirePermission('orders:create'), validateBody(createOrderSchema), ApiController.createSalesOrder);
+router.post('/orders/sync-batch', authenticate, requirePermission('orders:create'), validateBody(syncOfflineBatchSchema), ApiController.syncOfflineOrders);
+router.put('/orders/:id/approve', authenticate, requirePermission('orders:approve'), validateBody(approveOrderSchema), ApiController.approveOrder);
+router.put('/orders/:id/reject', authenticate, requirePermission('orders:approve'), validateBody(rejectOrderSchema), ApiController.rejectOrder);
+router.put('/orders/:id/dispatch', authenticate, requirePermission('orders:dispatch'), validateBody(dispatchOrderSchema), ApiController.dispatchOrder);
 
 // --- Invoicing & GST Tax Engine ---
-router.get('/invoices', ApiController.getInvoices);
-router.get('/invoices/:id/pdf', ApiController.getInvoicePDF);
+router.get('/invoices', authenticate, requirePermission('invoices:read'), ApiController.getInvoices);
+router.get('/invoices/:id/pdf', authenticate, requirePermission('invoices:pdf'), ApiController.getInvoicePDF);
 
 // --- Collections & Payments ---
-router.get('/payments', ApiController.getPayments);
-router.post('/payments', ApiController.recordPayment);
+router.get('/payments', authenticate, requirePermission('payments:read'), ApiController.getPayments);
+router.post('/payments', authenticate, requirePermission('payments:create'), validateBody(recordPaymentSchema), ApiController.recordPayment);
 
 // --- Regulatory, Financial & Production Reports ---
-router.get('/reports/sales-register', ApiController.getSalesRegister);
-router.get('/reports/gst-summary', ApiController.getGSTSummary);
-router.get('/reports/production-report', ApiController.getProductionReport);
-router.get('/reports/outstanding', ApiController.getOutstanding);
+router.get('/reports/sales-register', authenticate, requirePermission('reports:read'), ApiController.getSalesRegister);
+router.get('/reports/gst-summary', authenticate, requirePermission('reports:read'), ApiController.getGSTSummary);
+router.get('/reports/production-report', authenticate, requirePermission('reports:read'), ApiController.getProductionReport);
+router.get('/reports/outstanding', authenticate, requirePermission('reports:read'), ApiController.getOutstanding);
 
 // --- Admin Control Centre, Owner Dashboard & Immutable Audit Trail ---
-router.get('/admin/overview', ApiController.getAdminOverview);
-router.get('/owner/overview', ApiController.getOwnerOverview);
-router.get('/audit-logs', ApiController.getAuditLogs);
+router.get('/admin/overview', authenticate, requireAdmin, ApiController.getAdminOverview);
+router.get('/owner/overview', authenticate, requireRoles('owner', 'admin', 'auditor'), ApiController.getOwnerOverview);
+router.get('/audit-logs', authenticate, requireRoles('admin', 'owner', 'auditor'), ApiController.getAuditLogs);
 
 // --- WhatsApp & OpenWA Automation ---
-router.get('/whatsapp/notifications', ApiController.getWhatsAppNotifications);
-router.post('/whatsapp/send-test', ApiController.sendTestWhatsApp);
-router.get('/whatsapp/status', ApiController.getWhatsAppStatus);
+router.get('/whatsapp/notifications', authenticate, requireRoles('admin', 'owner'), ApiController.getWhatsAppNotifications);
+router.post('/whatsapp/send-test', authenticate, requireRoles('admin', 'owner'), ApiController.sendTestWhatsApp);
+router.get('/whatsapp/status', authenticate, requireRoles('admin', 'owner'), ApiController.getWhatsAppStatus);
 
 // --- Public Inquiries & Enterprise Onboarding ---
-router.post('/inquiries', ApiController.submitInquiry);
+router.post('/inquiries', validateBody(submitInquirySchema), ApiController.submitInquiry);
 router.get('/inquiries', authenticate, requireAdmin, ApiController.getInquiries);
-router.put('/inquiries/:id', authenticate, requireAdmin, ApiController.updateInquiryStatus);
+router.put('/inquiries/:id', authenticate, requireAdmin, validateBody(updateInquiryStatusSchema), ApiController.updateInquiryStatus);
 
 export default router;

@@ -18,21 +18,26 @@ import {
 import { StockLedgerService } from '../services/stockLedger.service';
 
 export async function seedBenchmarkData() {
+  process.env.ALLOW_LEDGER_RESET = 'true';
   console.log('[Seed] Clearing all existing collections...');
-  await Promise.all([
-    User.deleteMany({}),
-    Customer.deleteMany({}),
-    Product.deleteMany({}),
-    RawMaterial.deleteMany({}),
-    BOM.deleteMany({}),
-    StockMovement.deleteMany({}),
-    Purchase.deleteMany({}),
-    ProductionRun.deleteMany({}),
-    SalesOrder.deleteMany({}),
-    Invoice.deleteMany({}),
-    Payment.deleteMany({}),
-    AuditLog.deleteMany({})
-  ]);
+  try {
+    await Promise.all([
+      User.deleteMany({}),
+      Customer.deleteMany({}),
+      Product.deleteMany({}),
+      RawMaterial.deleteMany({}),
+      BOM.deleteMany({}),
+      StockMovement.deleteMany({}),
+      Purchase.deleteMany({}),
+      ProductionRun.deleteMany({}),
+      SalesOrder.deleteMany({}),
+      Invoice.deleteMany({}),
+      Payment.deleteMany({}),
+      AuditLog.deleteMany({})
+    ]);
+  } finally {
+    process.env.ALLOW_LEDGER_RESET = 'false';
+  }
 
   console.log('[Seed] Inserting Users with secure credentials & roles...');
   const salt = await bcrypt.genSalt(10);

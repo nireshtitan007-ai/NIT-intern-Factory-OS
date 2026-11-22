@@ -21,13 +21,15 @@ import {
   Mail, 
   Phone, 
   Send, 
-  AlertCircle
+  AlertCircle,
+  Target
 } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LandingPageViewProps {
   onEnterApp: () => void;
   onOpenBenchmark: () => void;
+  onOpenPitch?: () => void;
   onNavigate: (route: string) => void;
   currentPath?: string;
 }
@@ -35,6 +37,7 @@ interface LandingPageViewProps {
 export const LandingPageView: React.FC<LandingPageViewProps> = ({ 
   onEnterApp, 
   onOpenBenchmark,
+  onOpenPitch,
   onNavigate,
   currentPath = '/'
 }) => {
@@ -156,7 +159,16 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             </button>
           </nav>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
+            {onOpenPitch && (
+              <button
+                onClick={onOpenPitch}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 rounded-lg text-xs font-bold border border-amber-400/50 transition shadow-sm"
+              >
+                <Target className="w-3.5 h-3.5 text-amber-700" />
+                <span className="hidden sm:inline">Pitch Deck</span>
+              </button>
+            )}
             <button
               onClick={onOpenBenchmark}
               className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-cream-100 text-charcoal-700 rounded-lg text-xs font-semibold border border-subtle-border transition shadow-sm"
@@ -412,21 +424,56 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             </p>
 
             {/* 4 & 5. Primary and Secondary Call to Action */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
               <button
                 onClick={onEnterApp}
-                className="w-full sm:w-auto px-6 py-3 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-sm font-semibold shadow-sm transition flex items-center justify-center space-x-2"
+                className="w-full sm:w-auto px-6 py-3.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-sm font-bold shadow-sm transition flex items-center justify-center space-x-2"
               >
-                <span>Enter Workplace</span>
+                <span>Launch Live Platform</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
+              {onOpenPitch && (
+                <button
+                  onClick={onOpenPitch}
+                  className="w-full sm:w-auto px-6 py-3.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold shadow-sm transition flex items-center justify-center space-x-2"
+                >
+                  <Target className="w-4 h-4 text-amber-200" />
+                  <span>Interactive Pitch Deck</span>
+                </button>
+              )}
+
               <button
-                onClick={() => onNavigate('/contact')}
-                className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-cream-100 text-charcoal-900 rounded-xl text-sm font-semibold border border-subtle-border transition shadow-sm"
+                onClick={onOpenBenchmark}
+                className="w-full sm:w-auto px-5 py-3.5 bg-white hover:bg-cream-100 text-charcoal-900 rounded-xl text-sm font-semibold border border-subtle-border transition shadow-sm flex items-center justify-center space-x-2"
               >
-                Schedule Architecture Review
+                <Play className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+                <span>Verify 9/9 Benchmarks</span>
               </button>
+            </div>
+
+            {/* Official Benchmark Verification Strip */}
+            <div className="mt-12 max-w-4xl mx-auto bg-white/90 backdrop-blur-sm border border-subtle-border rounded-2xl p-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-charcoal-700 text-center">
+              <div className="p-2 border-r border-subtle-border last:border-none">
+                <span className="block text-[10px] font-bold text-forest-700 uppercase tracking-wider">NIT Section 5</span>
+                <span className="font-extrabold text-charcoal-900 text-sm mt-0.5 block">100% Passed</span>
+                <span className="text-[10px] text-charcoal-500">All 9 checks verified</span>
+              </div>
+              <div className="p-2 sm:border-r border-subtle-border">
+                <span className="block text-[10px] font-bold text-forest-700 uppercase tracking-wider">Currency Engine</span>
+                <span className="font-extrabold text-charcoal-900 text-sm mt-0.5 block">Integer Paise</span>
+                <span className="text-[10px] text-charcoal-500">Zero floating float drift</span>
+              </div>
+              <div className="p-2 border-r border-subtle-border last:border-none">
+                <span className="block text-[10px] font-bold text-forest-700 uppercase tracking-wider">Field Sync</span>
+                <span className="font-extrabold text-charcoal-900 text-sm mt-0.5 block">Offline-First</span>
+                <span className="text-[10px] text-charcoal-500">Dexie IndexedDB queue</span>
+              </div>
+              <div className="p-2">
+                <span className="block text-[10px] font-bold text-forest-700 uppercase tracking-wider">Tax Compliance</span>
+                <span className="font-extrabold text-charcoal-900 text-sm mt-0.5 block">GST Correct</span>
+                <span className="text-[10px] text-charcoal-500">Sec 170 CGST Invoicing</span>
+              </div>
             </div>
           </section>
 
