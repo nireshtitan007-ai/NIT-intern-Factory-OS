@@ -1,4 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export type CustomerType = 'RETAILER' | 'DISTRIBUTOR';
 
@@ -33,9 +34,9 @@ const CustomerSchema = new Schema<ICustomer>({
   city: { type: String, default: '' },
   phone: { type: String, default: '' },
   creditLimit: { type: Number, default: 50000 },
-  creditLimitPaise: { type: Number, default: 5000000 },
+  creditLimitPaise: { type: Number, default: 5000000, validate: integerPaiseValidator },
   outstandingBalance: { type: Number, default: 0 },
-  outstandingBalancePaise: { type: Number, default: 0 },
+  outstandingBalancePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   assignedSalesmanId: { type: String },
   createdAt: { type: Date, default: Date.now }
 });

@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export interface IPurchaseItem {
   materialId: Types.ObjectId;
@@ -32,9 +33,9 @@ const PurchaseItemSchema = new Schema<IPurchaseItem>({
   quantity: { type: Number, required: true },
   unit: { type: String, required: true },
   rate: { type: Number, required: true },
-  ratePaise: { type: Number, default: 0 },
+  ratePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   total: { type: Number, required: true },
-  totalPaise: { type: Number, default: 0 }
+  totalPaise: { type: Number, default: 0, validate: integerPaiseValidator }
 }, { _id: false });
 
 const PurchaseSchema = new Schema<IPurchase>({
@@ -43,7 +44,7 @@ const PurchaseSchema = new Schema<IPurchase>({
   supplierName: { type: String, required: true },
   items: [PurchaseItemSchema],
   totalAmount: { type: Number, required: true },
-  totalAmountPaise: { type: Number, default: 0 },
+  totalAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   status: { type: String, default: 'RECEIVED' },
   notes: { type: String },
   date: { type: Date, default: Date.now },

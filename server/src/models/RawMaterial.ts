@@ -1,4 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export type MaterialCategory = 'RAW_MATERIAL' | 'PACKAGING';
 
@@ -32,10 +33,10 @@ const RawMaterialSchema = new Schema<IRawMaterial>({
   openingStock: { type: Number, default: 0 },
   currentStock: { type: Number, default: 0 },
   standardRate: { type: Number, required: true },
-  standardRatePaise: { type: Number, default: 0 },
+  standardRatePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   currentWeightedRate: { type: Number, required: true },
-  currentWeightedRatePaise: { type: Number, default: 0 },
-  totalValuePaise: { type: Number, default: 0 },
+  currentWeightedRatePaise: { type: Number, default: 0, validate: integerPaiseValidator },
+  totalValuePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   reorderLevel: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });

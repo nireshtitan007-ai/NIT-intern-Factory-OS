@@ -26,6 +26,7 @@ import { CSVExportUtil } from '../utils/csvExport';
 import { seedBenchmarkData } from '../scripts/seedBenchmark';
 import { executeBenchmarkScenario } from '../scripts/runBenchmark';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { Serializers } from '../utils/serializers';
 
 function getTenantId(req: Request): string {
   const authReq = req as AuthenticatedRequest;
@@ -57,7 +58,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const customers = await Customer.find({ tenantId }).sort({ name: 1 }).lean();
-      res.json({ success: true, customers });
+      res.json({ success: true, customers: customers.map(c => Serializers.serializeCustomer(c)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -67,7 +68,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const products = await Product.find({ tenantId }).sort({ name: 1 }).lean();
-      res.json({ success: true, products });
+      res.json({ success: true, products: products.map(p => Serializers.serializeProduct(p)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -77,7 +78,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const materials = await RawMaterial.find({ tenantId }).sort({ category: 1, name: 1 }).lean();
-      res.json({ success: true, materials });
+      res.json({ success: true, materials: materials.map(m => Serializers.serializeRawMaterial(m)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -119,7 +120,7 @@ export class ApiController {
         itemType: req.query.itemType as any,
         sourceDocType: req.query.sourceDocType as string
       });
-      res.json({ success: true, movements });
+      res.json({ success: true, movements: movements.map(m => Serializers.serializeStockMovement(m)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -140,7 +141,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const purchases = await Purchase.find({ tenantId }).sort({ date: -1 }).lean();
-      res.json({ success: true, purchases });
+      res.json({ success: true, purchases: purchases.map(p => Serializers.serializePurchase(p)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -156,7 +157,7 @@ export class ApiController {
         createdBy: user?.name || user?.username || req.body.createdBy,
         userRole: user?.role
       });
-      res.status(201).json({ success: true, purchase });
+      res.status(201).json({ success: true, purchase: Serializers.serializePurchase(purchase) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -167,7 +168,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const runs = await ProductionRun.find({ tenantId }).sort({ createdAt: -1 }).lean();
-      res.json({ success: true, runs });
+      res.json({ success: true, runs: runs.map(r => Serializers.serializeProductionRun(r)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -183,7 +184,7 @@ export class ApiController {
         supervisorName: user?.name || user?.username || req.body.supervisorName,
         userRole: user?.role
       });
-      res.status(201).json({ success: true, run });
+      res.status(201).json({ success: true, run: Serializers.serializeProductionRun(run) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -200,7 +201,7 @@ export class ApiController {
         user?.name || user?.username || 'Factory Admin',
         user?.role || 'admin'
       );
-      res.json({ success: true, run });
+      res.json({ success: true, run: Serializers.serializeProductionRun(run) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -216,7 +217,7 @@ export class ApiController {
         query.salesmanId = user._id.toString();
       }
       const orders = await SalesOrder.find(query).sort({ createdAt: -1 }).lean();
-      res.json({ success: true, orders });
+      res.json({ success: true, orders: orders.map(o => Serializers.serializeSalesOrder(o)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -237,7 +238,7 @@ export class ApiController {
         salesmanName: user.name,
         userRole: user.role
       });
-      res.status(201).json({ success: true, order });
+      res.status(201).json({ success: true, order: Serializers.serializeSalesOrder(order) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -262,7 +263,7 @@ export class ApiController {
           salesmanName: user.name,
           userRole: user.role
         });
-        synced.push(order);
+        synced.push(Serializers.serializeSalesOrder(order));
       }
       res.json({ success: true, count: synced.length, synced });
     } catch (err: any) {
@@ -275,7 +276,12 @@ export class ApiController {
       const user = (req as AuthenticatedRequest).user;
       const approverName = user?.name || user?.username || req.body.approverName || 'Factory Admin';
       const result = await SalesOrderService.approveOrder(req.params.id, approverName, user?.role || 'admin');
-      res.json({ success: true, ...result });
+      res.json({ 
+        success: true, 
+        ...result,
+        order: result.order ? Serializers.serializeSalesOrder(result.order) : undefined,
+        invoice: result.invoice ? Serializers.serializeInvoice(result.invoice) : undefined
+      });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -287,7 +293,7 @@ export class ApiController {
       const rejectedBy = user?.name || user?.username || req.body.rejectedBy || 'Factory Admin';
       const { reason } = req.body;
       const order = await SalesOrderService.rejectOrder(req.params.id, reason, rejectedBy, user?.role || 'admin');
-      res.json({ success: true, order });
+      res.json({ success: true, order: Serializers.serializeSalesOrder(order) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -298,7 +304,7 @@ export class ApiController {
       const user = (req as AuthenticatedRequest).user;
       const dispatcherName = user?.name || user?.username || req.body.dispatcherName || 'Factory Admin';
       const invoice = await SalesOrderService.dispatchOrder(req.params.id, dispatcherName, user?.role || 'admin');
-      res.json({ success: true, invoice });
+      res.json({ success: true, invoice: Serializers.serializeInvoice(invoice) });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }
@@ -309,7 +315,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const invoices = await Invoice.find({ tenantId }).sort({ createdAt: -1 }).lean();
-      res.json({ success: true, invoices });
+      res.json({ success: true, invoices: invoices.map(i => Serializers.serializeInvoice(i)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -335,7 +341,7 @@ export class ApiController {
     try {
       const tenantId = getTenantId(req);
       const payments = await Payment.find({ tenantId }).sort({ date: -1 }).lean();
-      res.json({ success: true, payments });
+      res.json({ success: true, payments: payments.map(p => Serializers.serializePayment(p)) });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -350,7 +356,12 @@ export class ApiController {
         receivedBy,
         userRole: user?.role
       });
-      res.status(201).json({ success: true, ...result });
+      res.status(201).json({ 
+        success: true, 
+        ...result,
+        payment: result.payment ? Serializers.serializePayment(result.payment) : undefined,
+        invoice: result.invoice ? Serializers.serializeInvoice(result.invoice) : undefined
+      });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });
     }

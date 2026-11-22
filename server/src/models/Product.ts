@@ -1,4 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export interface IProduct extends Document {
   tenantId: string;
@@ -24,7 +25,7 @@ const ProductSchema = new Schema<IProduct>({
   packSize: { type: String, required: true },
   unit: { type: String, default: 'packet' },
   sellingPrice: { type: Number, required: true },
-  sellingPricePaise: { type: Number, default: 0 },
+  sellingPricePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   gstRate: { type: Number, default: 5 },
   hsnCode: { type: String, default: '19059040' },
   packetsPerCarton: { type: Number, default: 20 },

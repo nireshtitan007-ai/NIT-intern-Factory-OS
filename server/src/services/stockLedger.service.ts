@@ -7,6 +7,7 @@ import {
   RawMaterial, 
   Product 
 } from '../models';
+import { mulQtyRate } from '../utils/money';
 
 export interface RecordMovementParams {
   tenantId?: string;
@@ -125,7 +126,7 @@ export class StockLedgerService {
 
     const totalCostPaise = params.totalCostPaise !== undefined
       ? params.totalCostPaise
-      : Math.round(Math.abs(params.quantity) * unitCostPaise);
+      : mulQtyRate(Math.abs(params.quantity), unitCostPaise);
     const totalCost = params.totalCost !== undefined
       ? params.totalCost
       : (totalCostPaise / 100);

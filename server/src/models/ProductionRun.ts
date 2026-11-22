@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export interface IIssuedMaterial {
   materialId: Types.ObjectId;
@@ -54,9 +55,9 @@ const IssuedMaterialSchema = new Schema<IIssuedMaterial>({
   actualQtyIssued: { type: Number, required: true },
   unit: { type: String, required: true },
   unitCost: { type: Number, required: true },
-  unitCostPaise: { type: Number, default: 0 },
+  unitCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   totalCost: { type: Number, required: true },
-  totalCostPaise: { type: Number, default: 0 },
+  totalCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   varianceQty: { type: Number, required: true },
   variancePercent: { type: Number, required: true },
   varianceFlagged: { type: Boolean, default: false }
@@ -77,15 +78,15 @@ const ProductionRunSchema = new Schema<IProductionRun>({
   yieldVarianceFlagged: { type: Boolean, default: false },
   materialsIssued: [IssuedMaterialSchema],
   directLaborCost: { type: Number, default: 0 },
-  directLaborCostPaise: { type: Number, default: 0 },
+  directLaborCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   directOverheadCost: { type: Number, default: 0 },
-  directOverheadCostPaise: { type: Number, default: 0 },
+  directOverheadCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   totalMaterialCost: { type: Number, required: true },
-  totalMaterialCostPaise: { type: Number, default: 0 },
+  totalMaterialCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   totalProductionCost: { type: Number, required: true },
-  totalProductionCostPaise: { type: Number, default: 0 },
+  totalProductionCostPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   costPerPacket: { type: Number, required: true },
-  costPerPacketPaise: { type: Number, default: 0 },
+  costPerPacketPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   supervisorName: { type: String, required: true },
   notes: { type: String },
   status: { type: String, default: 'COMPLETED' },

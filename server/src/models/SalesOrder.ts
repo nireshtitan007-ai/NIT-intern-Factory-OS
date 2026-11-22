@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export type OrderStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'INVOICED' | 'DISPATCHED';
 
@@ -45,9 +46,9 @@ const SalesOrderItemSchema = new Schema<ISalesOrderItem>({
   productName: { type: String, required: true },
   quantity: { type: Number, required: true },
   unitPrice: { type: Number, required: true },
-  unitPricePaise: { type: Number, default: 0 },
+  unitPricePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   lineTotal: { type: Number, required: true },
-  lineTotalPaise: { type: Number, default: 0 }
+  lineTotalPaise: { type: Number, default: 0, validate: integerPaiseValidator }
 }, { _id: false });
 
 const SalesOrderSchema = new Schema<ISalesOrder>({
@@ -62,7 +63,7 @@ const SalesOrderSchema = new Schema<ISalesOrder>({
   customerStateCode: { type: String, required: true },
   items: [SalesOrderItemSchema],
   totalAmount: { type: Number, required: true },
-  totalAmountPaise: { type: Number, default: 0 },
+  totalAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   status: { 
     type: String, 
     required: true, 

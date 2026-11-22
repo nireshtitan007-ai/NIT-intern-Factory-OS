@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export interface IPayment extends Document {
   tenantId: string;
@@ -9,7 +10,7 @@ export interface IPayment extends Document {
   invoiceId: Types.ObjectId;
   invoiceNumber: string;
   amount: number;
-  amountPaise?: number;
+  amountPaise: number;
   paymentMethod: string;
   reference?: string;
   date: Date;
@@ -26,7 +27,7 @@ const PaymentSchema = new Schema<IPayment>({
   invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true, index: true },
   invoiceNumber: { type: String, required: true },
   amount: { type: Number, required: true },
-  amountPaise: { type: Number, default: 0 },
+  amountPaise: { type: Number, required: true, validate: integerPaiseValidator },
   paymentMethod: { type: String, default: 'BANK_TRANSFER' },
   reference: { type: String },
   date: { type: Date, default: Date.now },

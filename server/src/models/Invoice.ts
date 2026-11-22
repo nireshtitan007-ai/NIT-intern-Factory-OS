@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import { integerPaiseValidator } from '../utils/money';
 
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 
@@ -67,20 +68,20 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
   hsnCode: { type: String, default: '19059040' },
   quantity: { type: Number, required: true },
   unitPrice: { type: Number, required: true },
-  unitPricePaise: { type: Number, default: 0 },
+  unitPricePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   taxableAmount: { type: Number, required: true },
-  taxableAmountPaise: { type: Number, default: 0 },
+  taxableAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   cgstRate: { type: Number, default: 0 },
   cgstAmount: { type: Number, default: 0 },
-  cgstAmountPaise: { type: Number, default: 0 },
+  cgstAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   sgstRate: { type: Number, default: 0 },
   sgstAmount: { type: Number, default: 0 },
-  sgstAmountPaise: { type: Number, default: 0 },
+  sgstAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   igstRate: { type: Number, default: 0 },
   igstAmount: { type: Number, default: 0 },
-  igstAmountPaise: { type: Number, default: 0 },
+  igstAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   totalAmount: { type: Number, required: true },
-  totalAmountPaise: { type: Number, default: 0 }
+  totalAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator }
 }, { _id: false });
 
 const InvoiceSchema = new Schema<IInvoice>({
@@ -98,19 +99,19 @@ const InvoiceSchema = new Schema<IInvoice>({
   isInterState: { type: Boolean, required: true },
   items: [InvoiceItemSchema],
   taxableValue: { type: Number, required: true },
-  taxableValuePaise: { type: Number, default: 0 },
+  taxableValuePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   cgstTotal: { type: Number, default: 0 },
-  cgstTotalPaise: { type: Number, default: 0 },
+  cgstTotalPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   sgstTotal: { type: Number, default: 0 },
-  sgstTotalPaise: { type: Number, default: 0 },
+  sgstTotalPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   igstTotal: { type: Number, default: 0 },
-  igstTotalPaise: { type: Number, default: 0 },
+  igstTotalPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   grandTotal: { type: Number, required: true },
-  grandTotalPaise: { type: Number, default: 0 },
+  grandTotalPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   paidAmount: { type: Number, default: 0 },
-  paidAmountPaise: { type: Number, default: 0 },
+  paidAmountPaise: { type: Number, default: 0, validate: integerPaiseValidator },
   balanceDue: { type: Number, required: true },
-  balanceDuePaise: { type: Number, default: 0 },
+  balanceDuePaise: { type: Number, default: 0, validate: integerPaiseValidator },
   paymentStatus: { 
     type: String, 
     required: true, 

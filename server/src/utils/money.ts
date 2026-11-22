@@ -183,3 +183,12 @@ export function validatePaymentPaise(balanceDuePaise: number, paymentAmountPaise
     newBalanceDuePaise: balanceDuePaise - paymentAmountPaise
   };
 }
+
+/**
+ * Model-level validator ensuring strictly integer paise amounts across all schemas.
+ * Floats or fractional paise are rejected at database boundary.
+ */
+export const integerPaiseValidator = {
+  validator: (val: number) => typeof val === 'number' && Number.isInteger(val),
+  message: '{PATH} must be an integer paise amount without fractional decimals.'
+};
