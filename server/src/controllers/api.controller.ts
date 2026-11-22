@@ -125,6 +125,16 @@ export class ApiController {
     }
   }
 
+  static async reconcileInventory(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const report = await StockLedgerService.reconcileInventory(tenantId);
+      res.json({ success: true, report });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   // --- Purchasing ---
   static async getPurchases(req: Request, res: Response) {
     try {

@@ -12,3 +12,4 @@ export * from './Payment';
 export * from './AuditLog';
 export * from './Notification';
 export * from './Inquiry';
+export * from './Counter';

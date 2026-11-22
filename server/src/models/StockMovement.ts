@@ -26,6 +26,7 @@ export interface IStockMovement extends Document {
   sourceDocType: 'PURCHASE' | 'PRODUCTION_RUN' | 'INVOICE' | 'MANUAL_ADJUSTMENT' | 'OPENING';
   sourceDocId?: string;
   batchNumber?: string;
+  expiryDate?: Date;
   runningBalance: number;
   notes?: string;
   createdBy: string;
@@ -70,6 +71,7 @@ const StockMovementSchema = new Schema<IStockMovement>({
   },
   sourceDocId: { type: String },
   batchNumber: { type: String },
+  expiryDate: { type: Date },
   runningBalance: { type: Number, required: true },
   notes: { type: String },
   createdBy: { type: String, default: 'SYSTEM' },

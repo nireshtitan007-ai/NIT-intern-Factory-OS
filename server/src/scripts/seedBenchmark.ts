@@ -230,6 +230,20 @@ export async function seedBenchmarkData() {
       reorderLevel: 200
     },
     {
+      code: 'POUCH-500G',
+      name: '500 g pouch',
+      category: 'PACKAGING',
+      unit: 'piece',
+      openingStock: 300,
+      currentStock: 300,
+      standardRate: 4.00,
+      standardRatePaise: 400,
+      currentWeightedRate: 4.00,
+      currentWeightedRatePaise: 400,
+      totalValuePaise: 120000,
+      reorderLevel: 100
+    },
+    {
       code: 'CARTON-20PKT',
       name: 'Carton (holds 20 packets)',
       category: 'PACKAGING',
@@ -312,7 +326,8 @@ export async function seedBenchmarkData() {
         materialName: flourMat.name,
         quantityPerBatch: 40,
         unit: 'kg',
-        standardRate: 42
+        standardRate: 42,
+        consumptionBasis: 'PER_BATCH'
       },
       {
         materialId: oilMat._id,
@@ -320,7 +335,8 @@ export async function seedBenchmarkData() {
         materialName: oilMat.name,
         quantityPerBatch: 10,
         unit: 'litre',
-        standardRate: 140
+        standardRate: 140,
+        consumptionBasis: 'PER_BATCH'
       },
       {
         materialId: spiceMat._id,
@@ -328,7 +344,8 @@ export async function seedBenchmarkData() {
         materialName: spiceMat.name,
         quantityPerBatch: 1.2,
         unit: 'kg',
-        standardRate: 200
+        standardRate: 200,
+        consumptionBasis: 'PER_BATCH'
       }
     ],
     packagingMaterials: [
@@ -338,7 +355,8 @@ export async function seedBenchmarkData() {
         materialName: pouchMat.name,
         quantityPerBatch: 200,
         unit: 'piece',
-        standardRate: 2.50
+        standardRate: 2.50,
+        consumptionBasis: 'PER_GOOD_PACKET_PLUS_SCRAP'
       },
       {
         materialId: cartonMat._id,
@@ -346,13 +364,107 @@ export async function seedBenchmarkData() {
         materialName: cartonMat.name,
         quantityPerBatch: 10,
         unit: 'piece',
-        standardRate: 15
+        standardRate: 15,
+        consumptionBasis: 'PER_N_PACKETS',
+        packetsPerUnit: 20
+      }
+    ]
+  });
+
+  console.log('[Seed] Inserting Second Product (Murukku 500g) for Multi-SKU BOM validation...');
+  const pouch500Mat = materials.find(m => m.code === 'POUCH-500G')!;
+  const product500g = await Product.create({
+    code: 'MUR-500G',
+    name: 'Murukku 500 g',
+    packSize: '500g',
+    unit: 'packet',
+    sellingPrice: 110,
+    sellingPricePaise: 11000,
+    gstRate: 5,
+    hsnCode: '19059040',
+    packetsPerCarton: 10,
+    shelfLifeDays: 90,
+    openingStock: 20,
+    currentStock: 20
+  });
+
+  await StockLedgerService.recordMovement({
+    itemType: 'FINISHED_GOOD',
+    itemId: product500g._id,
+    itemCode: product500g.code,
+    itemName: 'Murukku 500 g',
+    movementType: 'OPENING_BALANCE',
+    quantity: 20,
+    unit: 'packet',
+    unitCost: 110,
+    unitCostPaise: 11000,
+    sourceDocType: 'OPENING',
+    sourceDocId: 'INIT-OPENING',
+    notes: 'Initial opening stock (20 packets) for Murukku 500 g SKU',
+    createdBy: 'SYSTEM_SEED'
+  });
+
+  const bom500g = await BOM.create({
+    productId: product500g._id,
+    productCode: product500g.code,
+    productName: product500g.name,
+    batchExpectedOutput: 100,
+    outputUnit: 'packets',
+    tolerancePercent: 3,
+    rawMaterials: [
+      {
+        materialId: flourMat._id,
+        materialCode: flourMat.code,
+        materialName: flourMat.name,
+        quantityPerBatch: 50,
+        unit: 'kg',
+        standardRate: 42,
+        consumptionBasis: 'PER_BATCH'
+      },
+      {
+        materialId: oilMat._id,
+        materialCode: oilMat.code,
+        materialName: oilMat.name,
+        quantityPerBatch: 12.5,
+        unit: 'litre',
+        standardRate: 140,
+        consumptionBasis: 'PER_BATCH'
+      },
+      {
+        materialId: spiceMat._id,
+        materialCode: spiceMat.code,
+        materialName: spiceMat.name,
+        quantityPerBatch: 1.5,
+        unit: 'kg',
+        standardRate: 200,
+        consumptionBasis: 'PER_BATCH'
+      }
+    ],
+    packagingMaterials: [
+      {
+        materialId: pouch500Mat._id,
+        materialCode: pouch500Mat.code,
+        materialName: pouch500Mat.name,
+        quantityPerBatch: 100,
+        unit: 'piece',
+        standardRate: 4.00,
+        consumptionBasis: 'PER_GOOD_PACKET_PLUS_SCRAP'
+      },
+      {
+        materialId: cartonMat._id,
+        materialCode: cartonMat.code,
+        materialName: cartonMat.name,
+        quantityPerBatch: 10,
+        unit: 'piece',
+        standardRate: 15,
+        consumptionBasis: 'PER_N_PACKETS',
+        packetsPerUnit: 10
       }
     ]
   });
 
   console.log('[Seed] Benchmark Master Data seeded successfully.');
-  return { users, retailerA, distributorB, materials, product, bom };
+  return { users, retailerA, distributorB, materials, product, bom, product500g, bom500g };
 }
 
 if (require.main === module) {

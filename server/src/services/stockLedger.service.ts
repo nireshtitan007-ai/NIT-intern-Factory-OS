@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, ClientSession } from 'mongoose';
 import { 
   StockMovement, 
   IStockMovement, 
@@ -18,41 +18,119 @@ export interface RecordMovementParams {
   quantity: number; // positive for inward, negative for outward
   unit: string;
   unitCost?: number;
+  unitCostPaise?: number;
+  totalCost?: number;
+  totalCostPaise?: number;
   sourceDocType: 'PURCHASE' | 'PRODUCTION_RUN' | 'INVOICE' | 'MANUAL_ADJUSTMENT' | 'OPENING';
   sourceDocId?: string;
   batchNumber?: string;
+  expiryDate?: Date;
   notes?: string;
   createdBy?: string;
+  session?: ClientSession | null;
 }
 
 export class StockLedgerService {
   /**
-   * Appends an immutable stock movement to the ledger and updates cached stock.
-   * Strictly prevents negative inventory.
+   * Appends an immutable stock movement to the ledger and updates cached stock atomically.
+   * Concurrency-safe: utilizes findOneAndUpdate with condition `currentStock: { $gte: -qty }`
+   * inside the mongoose transaction session.
    */
   static async recordMovement(params: RecordMovementParams): Promise<IStockMovement> {
     const objectId = typeof params.itemId === 'string' ? new Types.ObjectId(params.itemId) : params.itemId;
-    const tenantId = params.tenantId || 'TENANT_NASH_FOODS';
+    const tenantId = params.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
+    const session = params.session || undefined;
     
-    // Find latest movement for this item and tenant to determine previous running balance
-    const lastMovement = await StockMovement.findOne({ tenantId, itemId: objectId })
-      .sort({ createdAt: -1, _id: -1 })
-      .lean();
+    let runningBalance: number;
 
-    const previousBalance = lastMovement ? lastMovement.runningBalance : 0;
+    if (params.movementType === 'OPENING_BALANCE') {
+      // Opening balance sets initial baseline stock without double-counting pre-set document fields
+      let updatedDoc: any;
+      if (params.itemType === 'FINISHED_GOOD') {
+        updatedDoc = await Product.findOneAndUpdate(
+          { _id: objectId, tenantId },
+          { currentStock: params.quantity },
+          { new: true, session }
+        );
+      } else {
+        updatedDoc = await RawMaterial.findOneAndUpdate(
+          { _id: objectId, tenantId },
+          { currentStock: params.quantity },
+          { new: true, session }
+        );
+      }
+      runningBalance = updatedDoc ? updatedDoc.currentStock : params.quantity;
+    } else if (params.quantity < 0) {
+      // Outward movement: atomic decrement with stock-floor guard ($gte: Math.abs(qty))
+      const requiredQty = Math.abs(params.quantity);
+      let updatedDoc: any;
 
-    // Strict Negative Stock Check for outward movements
-    if (params.quantity < 0 && (previousBalance + params.quantity < -0.0001)) {
-      throw new Error(
-        `INSUFFICIENT_STOCK: Cannot issue ${Math.abs(params.quantity)} ${params.unit} of ${params.itemCode}. Current stock is ${previousBalance} ${params.unit}. Negative inventory is prohibited.`
-      );
+      if (params.itemType === 'FINISHED_GOOD') {
+        updatedDoc = await Product.findOneAndUpdate(
+          { _id: objectId, tenantId, currentStock: { $gte: requiredQty - 0.0001 } },
+          { $inc: { currentStock: params.quantity } },
+          { new: true, session }
+        );
+      } else {
+        updatedDoc = await RawMaterial.findOneAndUpdate(
+          { _id: objectId, tenantId, currentStock: { $gte: requiredQty - 0.0001 } },
+          { $inc: { currentStock: params.quantity } },
+          { new: true, session }
+        );
+      }
+
+      if (!updatedDoc) {
+        // Query current balance to return descriptive, defensive error message
+        let currentStock = 0;
+        if (params.itemType === 'FINISHED_GOOD') {
+          const doc = await Product.findById(objectId).lean();
+          currentStock = doc ? doc.currentStock : 0;
+        } else {
+          const doc = await RawMaterial.findById(objectId).lean();
+          currentStock = doc ? doc.currentStock : 0;
+        }
+
+        throw new Error(
+          `INSUFFICIENT_STOCK: Cannot issue ${requiredQty} ${params.unit} of ${params.itemCode}. Current stock is ${currentStock} ${params.unit}. Negative inventory is prohibited.`
+        );
+      }
+
+      runningBalance = updatedDoc.currentStock;
+    } else {
+      // Inward movement: atomic increment
+      let updatedDoc: any;
+      if (params.itemType === 'FINISHED_GOOD') {
+        updatedDoc = await Product.findOneAndUpdate(
+          { _id: objectId, tenantId },
+          { $inc: { currentStock: params.quantity } },
+          { new: true, session }
+        );
+      } else {
+        updatedDoc = await RawMaterial.findOneAndUpdate(
+          { _id: objectId, tenantId },
+          { $inc: { currentStock: params.quantity } },
+          { new: true, session }
+        );
+      }
+      runningBalance = updatedDoc ? updatedDoc.currentStock : params.quantity;
     }
 
-    // Round to 3 decimal places to prevent float precision drift
-    const newRunningBalance = Math.round((previousBalance + params.quantity) * 1000) / 1000;
+    // Cost calculations with paise precision
+    const unitCostPaise = params.unitCostPaise !== undefined 
+      ? params.unitCostPaise 
+      : (params.unitCost ? Math.round(params.unitCost * 100) : 0);
+    const unitCost = params.unitCost !== undefined 
+      ? params.unitCost 
+      : (unitCostPaise / 100);
 
-    const unitCost = params.unitCost || 0;
-    const totalCost = Math.round(Math.abs(params.quantity) * unitCost * 100) / 100;
+    const totalCostPaise = params.totalCostPaise !== undefined
+      ? params.totalCostPaise
+      : Math.round(Math.abs(params.quantity) * unitCostPaise);
+    const totalCost = params.totalCost !== undefined
+      ? params.totalCost
+      : (totalCostPaise / 100);
+
+    const roundedRunningBalance = Math.round(runningBalance * 1000) / 1000;
 
     const movement = new StockMovement({
       tenantId,
@@ -64,25 +142,20 @@ export class StockLedgerService {
       quantity: params.quantity,
       unit: params.unit,
       unitCost,
+      unitCostPaise,
       totalCost,
+      totalCostPaise,
       sourceDocType: params.sourceDocType,
       sourceDocId: params.sourceDocId,
       batchNumber: params.batchNumber,
-      runningBalance: newRunningBalance,
+      expiryDate: params.expiryDate,
+      runningBalance: roundedRunningBalance,
       notes: params.notes,
       createdBy: params.createdBy || 'SYSTEM',
       createdAt: new Date()
     });
 
-    await movement.save();
-
-    // Synchronize fast-lookup balance on parent document
-    if (params.itemType === 'FINISHED_GOOD') {
-      await Product.findByIdAndUpdate(objectId, { currentStock: newRunningBalance });
-    } else {
-      await RawMaterial.findByIdAndUpdate(objectId, { currentStock: newRunningBalance });
-    }
-
+    await movement.save({ session });
     return movement;
   }
 
@@ -96,6 +169,66 @@ export class StockLedgerService {
       { $group: { _id: '$itemId', totalBalance: { $sum: '$quantity' } } }
     ]);
     return result.length > 0 ? Math.round(result[0].totalBalance * 1000) / 1000 : 0;
+  }
+
+  /**
+   * Reconciles cached currentStock on Product and RawMaterial against the immutable ledger sum.
+   * Section 4.4 & 4.6 Audit Requirement.
+   */
+  static async reconcileInventory(tenantId: string = 'TENANT_NASH_FOODS') {
+    const items: Array<{
+      itemId: string;
+      itemCode: string;
+      itemName: string;
+      itemType: StockItemType;
+      cachedStock: number;
+      ledgerStock: number;
+      discrepancy: number;
+      isBalanced: boolean;
+    }> = [];
+
+    const rawMaterials = await RawMaterial.find({ tenantId }).lean();
+    for (const mat of rawMaterials) {
+      const ledgerTotal = await this.calculateBalanceFromLedger(mat._id, tenantId);
+      const cachedStock = mat.currentStock || 0;
+      const discrepancy = Math.round((cachedStock - ledgerTotal) * 1000) / 1000;
+      items.push({
+        itemId: mat._id.toString(),
+        itemCode: mat.code,
+        itemName: mat.name,
+        itemType: mat.category as StockItemType,
+        cachedStock,
+        ledgerStock: ledgerTotal,
+        discrepancy,
+        isBalanced: Math.abs(discrepancy) < 0.001
+      });
+    }
+
+    const products = await Product.find({ tenantId }).lean();
+    for (const prod of products) {
+      const ledgerTotal = await this.calculateBalanceFromLedger(prod._id, tenantId);
+      const cachedStock = prod.currentStock || 0;
+      const discrepancy = Math.round((cachedStock - ledgerTotal) * 1000) / 1000;
+      items.push({
+        itemId: prod._id.toString(),
+        itemCode: prod.code,
+        itemName: prod.name,
+        itemType: 'FINISHED_GOOD',
+        cachedStock,
+        ledgerStock: ledgerTotal,
+        discrepancy,
+        isBalanced: Math.abs(discrepancy) < 0.001
+      });
+    }
+
+    const hasMismatches = items.some(i => !i.isBalanced);
+    return {
+      tenantId,
+      timestamp: new Date().toISOString(),
+      isFullyReconciled: !hasMismatches,
+      totalItemsChecked: items.length,
+      items
+    };
   }
 
   /**

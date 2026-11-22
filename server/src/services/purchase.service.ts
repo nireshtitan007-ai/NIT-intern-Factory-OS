@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { Purchase, IPurchase, RawMaterial, AuditLog } from '../models';
+import { Purchase, IPurchase, RawMaterial, AuditLog, getNextSequence } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { 
   rupeesToPaise, 
@@ -32,9 +32,9 @@ export class PurchaseService {
    * 3. Creates Purchase document and audit log
    */
   static async recordPurchase(params: CreatePurchaseParams): Promise<IPurchase> {
-    const tenantId = params.tenantId || 'TENANT_NASH_FOODS';
-    const count = await Purchase.countDocuments({ tenantId });
-    const purchaseNumber = `PO-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
+    const tenantId = params.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
+    const seq = await getNextSequence(tenantId, 'PURCHASE');
+    const purchaseNumber = `PO-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
 
     const purchaseItems: any[] = [];
     let grandTotalPaise = 0;

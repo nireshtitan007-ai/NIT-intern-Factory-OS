@@ -60,6 +60,8 @@ router.get('/boms', authenticate, requireRoles('admin', 'owner', 'production', '
 // --- Authoritative Central Inventory ---
 router.get('/inventory/stock-summary', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'purchase', 'accountant', 'auditor'), ApiController.getStockSummary);
 router.get('/inventory/ledger', authenticate, requireRoles('admin', 'owner', 'production', 'inventory', 'purchase', 'accountant', 'auditor'), ApiController.getStockLedger);
+router.get('/inventory/reconcile', authenticate, requireRoles('admin', 'owner', 'inventory', 'accountant', 'auditor'), ApiController.reconcileInventory);
+router.post('/inventory/reconcile', authenticate, requireRoles('admin', 'owner', 'inventory', 'accountant', 'auditor'), ApiController.reconcileInventory);
 
 // --- Procurement & Purchases ---
 router.get('/purchases', authenticate, requireRoles('admin', 'owner', 'production', 'purchase', 'inventory', 'accountant', 'auditor'), ApiController.getPurchases);

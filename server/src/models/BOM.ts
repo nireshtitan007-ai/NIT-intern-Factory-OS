@@ -1,5 +1,7 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
+export type BOMConsumptionBasis = 'PER_BATCH' | 'PER_GOOD_PACKET_PLUS_SCRAP' | 'PER_N_PACKETS';
+
 export interface IBOMItem {
   materialId: Types.ObjectId;
   materialCode: string;
@@ -8,6 +10,8 @@ export interface IBOMItem {
   unit: string;
   standardRate: number;
   standardRatePaise?: number;
+  consumptionBasis?: BOMConsumptionBasis;
+  packetsPerUnit?: number;
 }
 
 export interface IBOM extends Document {
@@ -30,7 +34,13 @@ const BOMItemSchema = new Schema<IBOMItem>({
   quantityPerBatch: { type: Number, required: true },
   unit: { type: String, required: true },
   standardRate: { type: Number, required: true },
-  standardRatePaise: { type: Number, default: 0 }
+  standardRatePaise: { type: Number, default: 0 },
+  consumptionBasis: { 
+    type: String, 
+    enum: ['PER_BATCH', 'PER_GOOD_PACKET_PLUS_SCRAP', 'PER_N_PACKETS'], 
+    default: 'PER_BATCH' 
+  },
+  packetsPerUnit: { type: Number, default: 1 }
 }, { _id: false });
 
 const BOMSchema = new Schema<IBOM>({

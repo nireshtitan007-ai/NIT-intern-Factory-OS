@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   gstRate: number; // in percentage e.g. 5
   hsnCode: string; // e.g. '19059040'
   packetsPerCarton?: number; // e.g. 20 packets per carton
+  shelfLifeDays?: number; // e.g. 90 days for FEFO dispatch
   currentStock: number; // packets
   openingStock: number;
   createdAt: Date;
@@ -27,6 +28,7 @@ const ProductSchema = new Schema<IProduct>({
   gstRate: { type: Number, default: 5 },
   hsnCode: { type: String, default: '19059040' },
   packetsPerCarton: { type: Number, default: 20 },
+  shelfLifeDays: { type: Number, default: 90 },
   currentStock: { type: Number, default: 0 },
   openingStock: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }

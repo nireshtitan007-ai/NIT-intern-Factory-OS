@@ -8,7 +8,9 @@ import {
   IInvoice,
   Payment,
   IPayment,
-  AuditLog
+  AuditLog,
+  StockMovement,
+  getNextSequence
 } from '../models';
 import { StockLedgerService } from './stockLedger.service';
 import { WhatsAppService } from './whatsapp.service';
@@ -54,8 +56,8 @@ export class SalesOrderService {
       if (existing) return existing;
     }
 
-    const count = await SalesOrder.countDocuments({ tenantId });
-    const orderNumber = `SO-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
+    const seq = await getNextSequence(tenantId, 'ORDER');
+    const orderNumber = `SO-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
 
     const orderItems: any[] = [];
     let totalAmountPaise = 0;
@@ -211,10 +213,10 @@ export class SalesOrderService {
     const factoryState = 'Tamil Nadu';
     const isInterState = customer.state.trim().toLowerCase() !== factoryState.toLowerCase();
 
-    const tenantId = order.tenantId || 'TENANT_NASH_FOODS';
-    const invoiceCount = await Invoice.countDocuments({ tenantId });
+    const tenantId = order.tenantId || process.env.DEFAULT_TENANT_ID || 'TENANT_NASH_FOODS';
     const financialYear = '2024-25';
-    const invoiceNumber = `INV/${financialYear}/${String(invoiceCount + 1).padStart(3, '0')}`;
+    const invoiceSeq = await getNextSequence(tenantId, `INVOICE:${financialYear}`);
+    const invoiceNumber = `INV/${financialYear}/${String(invoiceSeq).padStart(3, '0')}`;
 
     const invoiceItems: any[] = [];
     let taxableValuePaise = 0;
@@ -373,6 +375,46 @@ export class SalesOrderService {
         );
       }
 
+      // FEFO (First Expiry First Out) Batch Allocation
+      const batchReceipts = await StockMovement.find({
+        tenantId,
+        itemId: product._id,
+        itemType: 'FINISHED_GOOD',
+        quantity: { $gt: 0 }
+      }).sort({ expiryDate: 1, createdAt: 1 }).lean();
+
+      let remainingToDispatch = item.quantity;
+      const allocatedBatches: string[] = [];
+
+      for (const receipt of batchReceipts) {
+        if (remainingToDispatch <= 0) break;
+        const batchTag = receipt.batchNumber || 'OPENING-BATCH';
+
+        const dispatchesFromBatch = await StockMovement.aggregate([
+          {
+            $match: {
+              tenantId,
+              itemId: product._id,
+              batchNumber: receipt.batchNumber,
+              movementType: 'SALES_DISPATCH'
+            }
+          },
+          { $group: { _id: null, total: { $sum: '$quantity' } } }
+        ]);
+        const alreadyDispatched = dispatchesFromBatch.length > 0 ? Math.abs(dispatchesFromBatch[0].total) : 0;
+        const availableInBatch = Math.max(0, receipt.quantity - alreadyDispatched);
+
+        if (availableInBatch > 0) {
+          const allocQty = Math.min(remainingToDispatch, availableInBatch);
+          allocatedBatches.push(`${batchTag} (${allocQty} pkts)`);
+          remainingToDispatch -= allocQty;
+        }
+      }
+
+      const fefoNote = allocatedBatches.length > 0
+        ? ` | FEFO Batches: ${allocatedBatches.join(', ')}`
+        : '';
+
       await StockLedgerService.recordMovement({
         tenantId,
         itemType: 'FINISHED_GOOD',
@@ -385,7 +427,7 @@ export class SalesOrderService {
         unitCost: item.unitPrice,
         sourceDocType: 'INVOICE',
         sourceDocId: invoice.invoiceNumber,
-        notes: `Dispatch for Invoice ${invoice.invoiceNumber} to ${invoice.customerName}`,
+        notes: `Dispatch for Invoice ${invoice.invoiceNumber} to ${invoice.customerName}${fefoNote}`,
         createdBy: dispatcherName
       });
     }
@@ -449,8 +491,8 @@ export class SalesOrderService {
       throw new Error(validation.error || 'Invalid payment amount');
     }
 
-    const count = await Payment.countDocuments({ tenantId });
-    const paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
+    const seq = await getNextSequence(tenantId, 'PAYMENT');
+    const paymentNumber = `PAY-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
 
     const payment = new Payment({
       tenantId,
