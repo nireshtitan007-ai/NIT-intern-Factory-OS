@@ -33,22 +33,29 @@
 
 ---
 
-## Phase 3: Route Salesman Field Workflow (3:00 – 4:30)
+## Phase 3: Route Salesman Field Workflow & PWA Offline Sync (3:00 – 4:30)
 1. **Salesman Mobile Login:**
-   - Log in as `salesman_a` (`Nash@123`).
+   - Log in as `salesman_a` (`ZenLyft@123`).
    - Notice salesman sees **only their own assigned customers and orders** (strict server-side multi-user privacy).
-2. **Offline-First Ordering (IndexedDB Queue):**
-   - Toggle **"Simulate Offline"** switch in the top bar.
-   - Select **Retailer A**, choose **Murukku 200g**, quantity **150 packets**.
-   - Click **"Place Route Order"**.
-   - Notice the order is instantly saved in **Dexie IndexedDB** without network delay.
-   - Re-enable **"Online"** mode: the background listener automatically syncs the batch to the factory server with zero data loss.
+2. **Offline-First Ordering (Dexie IndexedDB Queue & Service Worker Caching):**
+   - **Manual Offline Check Protocol:**
+     1. Open Chrome DevTools (`F12`), navigate to **Network** tab, and set throttling to **Offline** (or toggle **"Simulate Offline"** in the top navigation bar).
+     2. Notice product and customer catalogs remain instantly accessible via Workbox `stale-while-revalidate` cache.
+     3. Select **Retailer A**, choose **Murukku 200g**, and use rapid stepper buttons (`+50`, `+100`) to set quantity to **150 packets** in under 15 seconds.
+     4. Click **"Queue Offline Order"**.
+     5. Notice the **Queued: 1** counter badge lights up, stored locally in **Dexie.js IndexedDB** with simulated GPS check-in metadata.
+     6. Switch DevTools Network back to **No throttling** (or toggle Online).
+     7. The background `window.addEventListener('online')` listener triggers automatically, syncing the queued batch idempotently via `POST /api/orders/sync-batch`.
+     8. Counter updates to **Synced: 1, Queued: 0** with server order confirmation.
+3. **Route Performance Dashboard:**
+   - Switch to the **"My Sales Performance"** tab.
+   - View real-time aggregated metrics from `GET /api/orders/mine/summary`: total revenue, order count by status, customer leaderboard, and recent dispatches.
 
 ---
 
 ## Phase 4: Production Floor & BOM Variance Engine (4:30 – 5:45)
 1. **Production Supervisor Login:**
-   - Switch to `supervisor` (`Nash@123`).
+   - Switch to `supervisor` (`ZenLyft@123`).
 2. **Standard Recipe (BOM) & Scaled Batch Issue:**
    - Show the BOM for **Murukku 200g**: standard batch produces 200 packets using 40 kg flour, 10 L oil, 1.2 kg spice mix, 200 pouches, and 10 cartons.
 3. **Daily Run Logging:**

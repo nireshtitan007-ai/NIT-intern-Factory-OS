@@ -19,11 +19,36 @@ import {
   Send,
   Compass,
   CreditCard,
-  PackageCheck
+  PackageCheck,
+  Search,
+  Plus,
+  Minus,
+  TrendingUp,
+  BarChart2,
+  Users,
+  Check
 } from 'lucide-react';
 
 interface SalesmanViewProps {
   isOffline: boolean;
+}
+
+interface SalesSummary {
+  salesmanName: string;
+  salesmanRole: string;
+  totalOrders: number;
+  totalSalesPaise: number;
+  totalSales: number;
+  statusCounts: Record<string, number>;
+  customerTotals: Array<{
+    customerId: string;
+    customerCode: string;
+    customerName: string;
+    orderCount: number;
+    totalAmountPaise: number;
+    totalAmount: number;
+  }>;
+  recentOrders: any[];
 }
 
 // Request salesman GPS location with a strict 5-second timeout (never blocks order flow)
@@ -66,16 +91,27 @@ const getSalesmanLocation = (): Promise<{ lat: number; lng: number; accuracyMete
 };
 
 export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
+  const [activeTab, setActiveTab] = useState<'order_entry' | 'my_sales'>('order_entry');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [pendingOfflineOrders, setPendingOfflineOrders] = useState<OfflineOrderRecord[]>([]);
 
+  // Sync counters
+  const [syncedCount, setSyncedCount] = useState<number>(0);
+  const [failedCount, setFailedCount] = useState<number>(0);
+
+  // Rapid order form state
+  const [customerSearch, setCustomerSearch] = useState<string>('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedProductCode, setSelectedProductCode] = useState<string>('MUR-200G');
   const [quantity, setQuantity] = useState<number>(150);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'warning' | 'error'; msg: string } | null>(null);
+
+  // Sales summary state
+  const [summary, setSummary] = useState<SalesSummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   // Load masters & orders
   const loadData = async () => {
@@ -112,9 +148,27 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
     }
   };
 
+  const loadSummary = async () => {
+    if (isOffline) return;
+    setLoadingSummary(true);
+    try {
+      const res = await api.getMySalesSummary();
+      if (res.success) {
+        setSummary(res.summary);
+      }
+    } catch (e) {
+      console.warn('Failed to load my sales summary:', e);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
-  }, [isOffline]);
+    if (activeTab === 'my_sales') {
+      loadSummary();
+    }
+  }, [isOffline, activeTab]);
 
   // Automatic sync when device network reconnects
   useEffect(() => {
@@ -231,26 +285,40 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         for (const p of pending) {
           if (p.id) await markOfflineOrderSynced(p.id);
         }
+        setSyncedCount(prev => prev + (res.count || pending.length));
         setPendingOfflineOrders([]);
         setNotification({
           type: 'success',
           msg: `Successfully synchronized ${res.count} offline orders with the factory server!`
         });
         loadData();
+      } else {
+        setFailedCount(prev => prev + pending.length);
+        setNotification({ type: 'error', msg: 'Sync failed: ' + (res.error || 'Server error') });
       }
     } catch (e: any) {
+      setFailedCount(prev => prev + 1);
       setNotification({ type: 'error', msg: 'Sync failed: ' + e.message });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const filteredCustomers = customers.filter(c => 
+    !customerSearch ||
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.code.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.city?.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
   const activeCustomer = customers.find(c => c._id === selectedCustomerId);
   const activeProduct = products.find(p => p.code === selectedProductCode);
+  const activePrice = activeProduct?.sellingPrice || 50;
+  const runningTotal = quantity * activePrice;
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
-      {/* Route & Status Banner */}
+      {/* Route & Status Banner with Real-Time PWA Counters */}
       <div className="bg-forest-700 text-cream-50 rounded-2xl p-5 shadow-sm border border-forest-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2 text-forest-200 text-xs font-semibold uppercase tracking-wider">
@@ -259,20 +327,65 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
           </div>
           <h1 className="text-xl sm:text-2xl font-bold mt-1 tracking-tight text-white">Field Order Terminal</h1>
           <p className="text-xs text-forest-100 mt-1 max-w-xl">
-            Offline IndexedDB persistence armed. Capture retail orders and synchronize idempotently with factory servers.
+            Offline PWA indexed storage active. Service worker caches products & customers for rapid offline ordering.
           </p>
+
+          {/* Sync status counters pill row */}
+          <div className="flex items-center space-x-3 mt-3 text-[11px] font-bold">
+            <span className="flex items-center space-x-1 bg-amber-500/20 text-amber-200 px-2.5 py-1 rounded-lg border border-amber-400/30">
+              <CloudOff className="w-3 h-3 text-amber-300" />
+              <span>Queued: {pendingOfflineOrders.length}</span>
+            </span>
+            <span className="flex items-center space-x-1 bg-emerald-500/20 text-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-400/30">
+              <CheckCircle className="w-3 h-3 text-emerald-300" />
+              <span>Synced: {syncedCount}</span>
+            </span>
+            {failedCount > 0 && (
+              <span className="flex items-center space-x-1 bg-red-500/20 text-red-200 px-2.5 py-1 rounded-lg border border-red-400/30">
+                <AlertCircle className="w-3 h-3 text-red-300" />
+                <span>Failed: {failedCount}</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {pendingOfflineOrders.length > 0 && (
           <button
             onClick={handleSyncPendingOrders}
             disabled={isOffline || isSubmitting}
-            className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-charcoal-900 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition"
+            className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-charcoal-900 px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition"
           >
             <RefreshCw className={`w-4 h-4 ${isSubmitting ? 'animate-spin' : ''}`} />
-            <span>Sync ({pendingOfflineOrders.length}) Pending Orders</span>
+            <span>Sync ({pendingOfflineOrders.length}) Offline Orders</span>
           </button>
         )}
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex space-x-2 border-b border-subtle-divider pb-2">
+        <button
+          onClick={() => setActiveTab('order_entry')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'order_entry'
+              ? 'bg-forest-700 text-white shadow-sm'
+              : 'bg-white text-charcoal-700 hover:bg-cream-100 border border-subtle-border'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          <span>⚡ Rapid Order Entry</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('my_sales')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'my_sales'
+              ? 'bg-forest-700 text-white shadow-sm'
+              : 'bg-white text-charcoal-700 hover:bg-cream-100 border border-subtle-border'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span>📊 My Sales Performance</span>
+        </button>
       </div>
 
       {notification && (
@@ -288,185 +401,311 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         </div>
       )}
 
-      {/* Quick Order Booking Card */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-4 flex items-center space-x-2">
-          <ShoppingBag className="w-4 h-4 text-forest-700" />
-          <span>New Customer Order Entry</span>
-        </h2>
-
-        <form onSubmit={handlePlaceOrder} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Customer Picker */}
-            <div>
-              <label className="block text-xs font-semibold text-charcoal-700 mb-1">Select Customer</label>
-              <select
-                value={selectedCustomerId}
-                onChange={e => setSelectedCustomerId(e.target.value)}
-                className="w-full bg-cream-50 border border-subtle-border rounded-xl px-3 py-2.5 text-xs text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
-              >
-                {customers.map(c => (
-                  <option key={c._id} value={c._id}>
-                    {c.name} ({c.type} - {c.state})
-                  </option>
-                ))}
-              </select>
-
-              {activeCustomer && (
-                <div className="mt-1.5 flex items-center justify-between text-[11px] text-charcoal-500 px-1">
-                  <span>Credit Limit: ₹{(activeCustomer.creditLimit || 0).toLocaleString('en-IN')}</span>
-                  <span className={activeCustomer.outstandingBalance > (activeCustomer.creditLimit || 0) * 0.8 ? 'text-amber-700 font-semibold' : ''}>
-                    Outstanding: ₹{(activeCustomer.outstandingBalance || 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Product Picker */}
-            <div>
-              <label className="block text-xs font-semibold text-charcoal-700 mb-1">Select Product</label>
-              <select
-                value={selectedProductCode}
-                onChange={e => setSelectedProductCode(e.target.value)}
-                className="w-full bg-cream-50 border border-subtle-border rounded-xl px-3 py-2.5 text-xs text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
-              >
-                {products.map(p => (
-                  <option key={p.code} value={p.code}>
-                    {p.name} ({p.packSize}) — ₹{p.sellingPrice} / pkt
-                  </option>
-                ))}
-              </select>
-
-              {activeProduct && (
-                <div className="mt-1.5 text-[11px] text-charcoal-500 px-1">
-                  Tax Rate: {activeProduct.gstRate}% GST • Unit MRP: ₹{activeProduct.sellingPrice}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quantity Controls with Quick Increments */}
-          <div>
-            <label className="block text-xs font-semibold text-charcoal-700 mb-1">Order Quantity (Packets)</label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={e => setQuantity(Number(e.target.value))}
-                className="w-full bg-cream-50 border border-subtle-border rounded-xl px-4 py-2 text-sm font-bold text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-forest-700"
-              />
-              <button
-                type="button"
-                onClick={() => setQuantity(150)}
-                className="px-3 py-2 bg-cream-100 hover:bg-cream-300 text-charcoal-700 text-xs font-semibold rounded-xl border border-subtle-border transition"
-              >
-                150 pkts
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuantity(120)}
-                className="px-3 py-2 bg-cream-100 hover:bg-cream-300 text-charcoal-700 text-xs font-semibold rounded-xl border border-subtle-border transition"
-              >
-                120 pkts
-              </button>
-            </div>
-          </div>
-
-          {/* Total & Submit Button */}
-          <div className="pt-3 flex items-center justify-between border-t border-subtle-divider">
-            <div>
-              <span className="text-xs text-charcoal-500 font-medium block">Order Taxable Value</span>
-              <span className="text-lg font-bold text-charcoal-900">
-                ₹{((products.find(p => p.code === selectedProductCode)?.sellingPrice || 50) * quantity).toLocaleString('en-IN')}
+      {/* TAB 1: RAPID ORDER ENTRY */}
+      {activeTab === 'order_entry' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700 flex items-center space-x-2">
+                <ShoppingBag className="w-4 h-4 text-forest-700" />
+                <span>Rapid Order Placement (&lt; 1 min)</span>
+              </h2>
+              <span className="text-[11px] font-semibold text-charcoal-500">
+                {isOffline ? 'Offline Staged Mode' : 'Direct Server Link'}
               </span>
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center space-x-2 bg-forest-700 hover:bg-forest-800 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Recording...' : isOffline ? 'Queue in Local Storage' : 'Submit Order'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+            <form onSubmit={handlePlaceOrder} className="space-y-4">
+              {/* Customer Search & Select */}
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 mb-1">Customer / Retailer</label>
+                <div className="relative mb-2">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-charcoal-400" />
+                  <input
+                    type="text"
+                    placeholder="Search retailer by name, code or city..."
+                    value={customerSearch}
+                    onChange={e => setCustomerSearch(e.target.value)}
+                    className="w-full bg-cream-50 border border-subtle-border rounded-xl pl-9 pr-3 py-2 text-xs text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-forest-700"
+                  />
+                </div>
 
-      {/* Offline Pending Orders Staging Box */}
-      {pendingOfflineOrders.length > 0 && (
-        <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center space-x-2">
-              <CloudOff className="w-4 h-4 text-amber-600" />
-              <span>Offline Orders Queue ({pendingOfflineOrders.length})</span>
-            </h3>
-            <span className="text-[11px] text-amber-700 font-medium">Stored Locally</span>
-          </div>
+                <select
+                  value={selectedCustomerId}
+                  onChange={e => setSelectedCustomerId(e.target.value)}
+                  className="w-full bg-cream-50 border border-subtle-border rounded-xl px-3 py-2.5 text-xs text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
+                >
+                  {filteredCustomers.map(c => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} ({c.type} - {c.city || c.state})
+                    </option>
+                  ))}
+                </select>
 
-          <div className="space-y-2">
-            {pendingOfflineOrders.map((o, idx) => (
-              <div key={idx} className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between text-xs">
+                {activeCustomer && (
+                  <div className="mt-2 p-2.5 bg-cream-50 rounded-xl border border-subtle-border flex items-center justify-between text-[11px] text-charcoal-700">
+                    <div>
+                      <span className="font-bold">{activeCustomer.name}</span>
+                      <span className="text-charcoal-500 ml-2 font-mono">[{activeCustomer.code}]</span>
+                    </div>
+                    <div className="space-x-3">
+                      <span>Limit: ₹{(activeCustomer.creditLimit || 0).toLocaleString('en-IN')}</span>
+                      <span className={`font-semibold ${activeCustomer.outstandingBalance > 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
+                        Bal: ₹{(activeCustomer.outstandingBalance || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 mb-1">Product SKU</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {products.map(p => (
+                    <button
+                      key={p.code}
+                      type="button"
+                      onClick={() => setSelectedProductCode(p.code)}
+                      className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                        selectedProductCode === p.code
+                          ? 'border-forest-700 bg-forest-50/50 shadow-sm'
+                          : 'border-subtle-border bg-cream-50 hover:bg-cream-100'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-charcoal-900">{p.name}</div>
+                        <div className="text-[11px] text-charcoal-500 font-mono">{p.packSize} • {p.gstRate}% GST</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-extrabold text-forest-800">₹{p.sellingPrice}</div>
+                        <div className="text-[10px] text-charcoal-500">per packet</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rapid Quantity Stepper */}
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 mb-1">Order Quantity (Packets)</label>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => Math.max(1, q - 10))}
+                    className="p-2.5 bg-cream-100 hover:bg-cream-200 rounded-xl border border-subtle-border text-charcoal-700"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+
+                  <input
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={e => setQuantity(Math.max(1, Number(e.target.value)))}
+                    className="w-full text-center bg-cream-50 border border-subtle-border rounded-xl px-4 py-2 text-base font-extrabold text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-forest-700"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => q + 10)}
+                    className="p-2.5 bg-cream-100 hover:bg-cream-200 rounded-xl border border-subtle-border text-charcoal-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Preset Buttons */}
+                <div className="flex items-center space-x-2 mt-2">
+                  {[50, 100, 120, 150, 200].map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setQuantity(amt)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition ${
+                        quantity === amt
+                          ? 'bg-forest-700 text-white border-forest-800'
+                          : 'bg-cream-50 text-charcoal-700 hover:bg-cream-100 border-subtle-border'
+                      }`}
+                    >
+                      {amt} pkts
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Real-Time Total & Quick Submit */}
+              <div className="pt-4 flex items-center justify-between border-t border-subtle-divider">
                 <div>
-                  <span className="font-bold text-charcoal-900">{o.customerName}</span>
-                  <span className="text-charcoal-500 ml-2">
-                    {o.items.map(i => `${i.quantity} pkts of ${i.productName}`).join(', ')}
+                  <span className="text-xs text-charcoal-500 font-medium block">Total Order Value</span>
+                  <span className="text-2xl font-extrabold text-forest-800 tracking-tight">
+                    ₹{runningTotal.toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[10px] text-charcoal-500 block">
+                    ({quantity} pkts × ₹{activePrice} / pkt)
                   </span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                  AWAITING SYNC
-                </span>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center space-x-2 bg-forest-700 hover:bg-forest-800 disabled:opacity-50 text-white px-7 py-3 rounded-xl text-xs font-bold shadow-sm transition"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Recording...' : isOffline ? 'Queue Offline Order' : 'Submit Route Order'}</span>
+                </button>
               </div>
-            ))}
+            </form>
+          </div>
+
+          {/* Offline Pending Orders Staging Box */}
+          {pendingOfflineOrders.length > 0 && (
+            <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center space-x-2">
+                  <CloudOff className="w-4 h-4 text-amber-600" />
+                  <span>Offline Orders Queue ({pendingOfflineOrders.length})</span>
+                </h3>
+                <span className="text-[11px] text-amber-700 font-medium">Stored Locally in IndexedDB</span>
+              </div>
+
+              <div className="space-y-2">
+                {pendingOfflineOrders.map((o, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-charcoal-900">{o.customerName}</span>
+                      <span className="text-charcoal-500 ml-2">
+                        {o.items.map(i => `${i.quantity} pkts of ${i.productName}`).join(', ')}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                      AWAITING SYNC
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Orders List */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-4 flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-forest-700" />
+              <span>My Recent Route Orders</span>
+            </h2>
+
+            {orders.length === 0 ? (
+              <p className="text-xs text-charcoal-500 py-4 text-center">No orders recorded on this route yet.</p>
+            ) : (
+              <div className="divide-y divide-subtle-divider">
+                {orders.map(o => (
+                  <div key={o._id} className="py-3 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-xs text-charcoal-900">{o.customerName}</span>
+                        <span className="text-[11px] font-mono text-charcoal-500">({o.orderNumber})</span>
+                      </div>
+                      <div className="text-xs text-charcoal-500 mt-0.5">
+                        {o.items.map(i => `${i.quantity} pkts`).join(', ')} • Total: ₹{o.totalAmount.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        o.status === 'DISPATCHED' ? 'bg-forest-100 text-forest-700' :
+                        o.status === 'INVOICED' ? 'bg-emerald-100 text-emerald-800' :
+                        o.status === 'APPROVED' ? 'bg-blue-100 text-blue-800' :
+                        o.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                        'bg-amber-100 text-amber-800'
+                      }`}>
+                        {o.status}
+                      </span>
+                      {!o.stockCheck.isSufficient && o.status === 'SUBMITTED' && (
+                        <span className="block text-[10px] text-red-600 font-bold mt-1">
+                          Shortage: {o.stockCheck.shortageQuantity} pkts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Order History */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-4 flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-forest-700" />
-          <span>My Recent Route Orders</span>
-        </h2>
+      {/* TAB 2: MY SALES PERFORMANCE */}
+      {activeTab === 'my_sales' && (
+        <div className="space-y-6">
+          {loadingSummary ? (
+            <div className="p-8 text-center text-xs text-charcoal-500">Loading route performance summary...</div>
+          ) : !summary ? (
+            <div className="p-8 text-center text-xs text-charcoal-500">
+              {isOffline ? 'Sales summary is available when connected online.' : 'No summary data available.'}
+            </div>
+          ) : (
+            <>
+              {/* Performance Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-subtle-border shadow-sm">
+                  <div className="text-xs text-charcoal-500 font-medium">Total Orders Placed</div>
+                  <div className="text-xl font-extrabold text-charcoal-900 mt-1">{summary.totalOrders}</div>
+                </div>
 
-        {orders.length === 0 ? (
-          <p className="text-xs text-charcoal-500 py-4 text-center">No orders recorded on this route yet.</p>
-        ) : (
-          <div className="divide-y divide-subtle-divider">
-            {orders.map(o => (
-              <div key={o._id} className="py-3 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="font-bold text-xs text-charcoal-900">{o.customerName}</span>
-                    <span className="text-[11px] font-mono text-charcoal-500">({o.orderNumber})</span>
-                  </div>
-                  <div className="text-xs text-charcoal-500 mt-0.5">
-                    {o.items.map(i => `${i.quantity} pkts`).join(', ')} • Total: ₹{o.totalAmount.toLocaleString('en-IN')}
+                <div className="bg-white p-4 rounded-2xl border border-subtle-border shadow-sm">
+                  <div className="text-xs text-charcoal-500 font-medium">Total Route Revenue</div>
+                  <div className="text-xl font-extrabold text-forest-800 mt-1">₹{summary.totalSales.toLocaleString('en-IN')}</div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-subtle-border shadow-sm">
+                  <div className="text-xs text-charcoal-500 font-medium">Invoiced / Dispatched</div>
+                  <div className="text-xl font-extrabold text-emerald-700 mt-1">
+                    {(summary.statusCounts.INVOICED || 0) + (summary.statusCounts.DISPATCHED || 0)}
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    o.status === 'DISPATCHED' ? 'bg-forest-100 text-forest-700' :
-                    o.status === 'INVOICED' ? 'bg-emerald-100 text-emerald-800' :
-                    o.status === 'APPROVED' ? 'bg-blue-100 text-blue-800' :
-                    o.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                    'bg-amber-100 text-amber-800'
-                  }`}>
-                    {o.status}
-                  </span>
-                  {!o.stockCheck.isSufficient && o.status === 'SUBMITTED' && (
-                    <span className="block text-[10px] text-red-600 font-bold mt-1">
-                      Shortage: {o.stockCheck.shortageQuantity} pkts
-                    </span>
-                  )}
+                <div className="bg-white p-4 rounded-2xl border border-subtle-border shadow-sm">
+                  <div className="text-xs text-charcoal-500 font-medium">Pending Review</div>
+                  <div className="text-xl font-extrabold text-amber-700 mt-1">
+                    {summary.statusCounts.SUBMITTED || 0}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* Customer Sales Leaderboard */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-4 flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-forest-700" />
+                  <span>Customer Sales Breakdown</span>
+                </h2>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-subtle-border text-charcoal-500 font-semibold">
+                        <th className="pb-3">Customer</th>
+                        <th className="pb-3">Code</th>
+                        <th className="pb-3 text-center">Orders</th>
+                        <th className="pb-3 text-right">Total Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-subtle-divider">
+                      {summary.customerTotals.map((c, i) => (
+                        <tr key={i} className="hover:bg-cream-50">
+                          <td className="py-2.5 font-bold text-charcoal-900">{c.customerName}</td>
+                          <td className="py-2.5 font-mono text-charcoal-500">{c.customerCode}</td>
+                          <td className="py-2.5 text-center font-semibold text-charcoal-700">{c.orderCount}</td>
+                          <td className="py-2.5 text-right font-extrabold text-forest-800">₹{c.totalAmount.toLocaleString('en-IN')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

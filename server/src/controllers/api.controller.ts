@@ -30,6 +30,7 @@ import { executeBenchmarkScenario } from '../scripts/runBenchmark';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { Serializers } from '../utils/serializers';
 import { ReportExporter, ReportColumnDef } from '../utils/reportExporter';
+import { paiseToRupees } from '../utils/money';
 
 function parseDateRange(req: Request): { from?: Date; to?: Date } {
   let from: Date | undefined;
@@ -705,6 +706,73 @@ export class ApiController {
   }
 
   // --- Sales Orders & Offline Sync ---
+  static async getMySalesSummary(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const user = (req as AuthenticatedRequest).user;
+      if (!user) {
+        res.status(401).json({ success: false, error: 'Authentication required' });
+        return;
+      }
+      const query = { tenantId, salesmanId: user._id.toString() };
+      const orders = await SalesOrder.find(query).sort({ createdAt: -1 }).lean();
+
+      const statusCounts: Record<string, number> = {
+        SUBMITTED: 0,
+        APPROVED: 0,
+        INVOICED: 0,
+        DISPATCHED: 0,
+        REJECTED: 0
+      };
+
+      let totalSalesPaise = 0;
+      const customerMap = new Map<string, { customerId: string; customerCode: string; customerName: string; orderCount: number; totalAmountPaise: number }>();
+
+      for (const order of orders) {
+        const status = order.status || 'SUBMITTED';
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+        const orderAmountPaise = order.totalAmountPaise ?? Math.round((order.totalAmount || 0) * 100);
+        totalSalesPaise += orderAmountPaise;
+
+        const custId = order.customerId ? order.customerId.toString() : order.customerCode;
+        if (!customerMap.has(custId)) {
+          customerMap.set(custId, {
+            customerId: custId,
+            customerCode: order.customerCode,
+            customerName: order.customerName,
+            orderCount: 0,
+            totalAmountPaise: 0
+          });
+        }
+        const custEntry = customerMap.get(custId)!;
+        custEntry.orderCount += 1;
+        custEntry.totalAmountPaise += orderAmountPaise;
+      }
+
+      const customerTotals = Array.from(customerMap.values()).map(c => ({
+        ...c,
+        totalAmount: paiseToRupees(c.totalAmountPaise)
+      })).sort((a, b) => b.totalAmountPaise - a.totalAmountPaise);
+
+      res.json({
+        success: true,
+        summary: {
+          salesmanName: user.name,
+          salesmanRole: user.role,
+          totalOrders: orders.length,
+          totalSalesPaise,
+          totalSales: paiseToRupees(totalSalesPaise),
+          statusCounts,
+          customerTotals,
+          recentOrders: orders.slice(0, 5).map(o => Serializers.serializeSalesOrder(o))
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   static async getSalesOrders(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);

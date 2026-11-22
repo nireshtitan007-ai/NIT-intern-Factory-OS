@@ -113,6 +113,7 @@ router.post('/production/runs', authenticate, requireRoles('admin', 'owner', 'pr
 router.put('/production/runs/:id/costs', authenticate, requireRoles('admin', 'owner', 'production', 'accountant'), validateBody(updateOverheadsSchema), ApiController.updateRunOverheads);
 
 // --- Sales Orders & Offline Sync ---
+router.get('/orders/mine/summary', authenticate, requireRoles('salesman', 'sales_manager'), ApiController.getMySalesSummary);
 router.get('/orders', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'accountant', 'auditor'), ApiController.getSalesOrders);
 router.post('/orders', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager'), validateBody(createOrderSchema), ApiController.createSalesOrder);
 router.put('/orders/:id', authenticate, requireRoles('admin', 'owner'), ApiController.editOrder);

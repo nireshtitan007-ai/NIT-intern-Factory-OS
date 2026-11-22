@@ -179,6 +179,7 @@ export const api = {
 
   // Orders
   getOrders: () => fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getMySalesSummary: () => fetch(`${API_BASE}/orders/mine/summary`, { headers: getAuthHeaders() }).then(r => r.json()),
   createOrder: (data: any) => 
     fetch(`${API_BASE}/orders`, {
       method: 'POST',
