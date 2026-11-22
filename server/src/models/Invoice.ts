@@ -64,6 +64,10 @@ export interface IInvoice extends Document {
   cancellationReason?: string;
   creditNoteId?: Types.ObjectId;
   creditNoteNumber?: string;
+  irn?: string;
+  ackNo?: string;
+  ackDate?: Date;
+  isMockEInvoice?: boolean;
   dueDate: Date;
   createdAt: Date;
 }
@@ -140,6 +144,10 @@ const InvoiceSchema = new Schema<IInvoice>({
   cancellationReason: { type: String },
   creditNoteId: { type: Schema.Types.ObjectId, ref: 'CreditNote' },
   creditNoteNumber: { type: String },
+  irn: { type: String, index: true },
+  ackNo: { type: String },
+  ackDate: { type: Date },
+  isMockEInvoice: { type: Boolean, default: false },
   dueDate: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
   createdAt: { type: Date, default: Date.now, index: true }
 });

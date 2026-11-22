@@ -22,6 +22,7 @@ import { SalesOrderService } from '../services/salesOrder.service';
 import { ReportService } from '../services/report.service';
 import { WhatsAppService } from '../services/whatsapp.service';
 import { RealtimeService } from '../services/realtime.service';
+import { EInvoiceService } from '../services/einvoice.service';
 import { PDFInvoiceGenerator } from '../utils/pdfGenerator';
 import { CSVExportUtil } from '../utils/csvExport';
 import { seedBenchmarkData } from '../scripts/seedBenchmark';
@@ -881,6 +882,39 @@ export class ApiController {
       res.send(pdfBuffer);
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getEInvoiceJSON(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const invoice = await Invoice.findOne({ _id: req.params.id, tenantId }) || await Invoice.findById(req.params.id);
+      if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+      const payload = await EInvoiceService.buildEInvoicePayload(invoice._id.toString());
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="einvoice-${invoice.invoiceNumber.replace(/\//g, '_')}.json"`);
+      return res.json(payload);
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async generateMockEInvoice(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const invoice = await Invoice.findOne({ _id: req.params.id, tenantId }) || await Invoice.findById(req.params.id);
+      if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+      const user = (req as any).user;
+      const updated = await EInvoiceService.generateMockIRN(invoice._id.toString(), {
+        username: user?.username || 'system',
+        role: user?.role || 'admin'
+      });
+      return res.json({ success: true, invoice: Serializers.serializeInvoice(updated) });
+    } catch (err: any) {
+      const status = err.message && err.message.includes('cancelled') ? 400 : 500;
+      return res.status(status).json({ success: false, error: err.message });
     }
   }
 

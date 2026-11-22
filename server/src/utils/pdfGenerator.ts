@@ -65,6 +65,10 @@ export class PDFInvoiceGenerator {
       doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString('en-IN')}`, rightColX);
       doc.text(`Supply Type: ${invoice.isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}`, rightColX);
       doc.text(`Payment Status: ${invoice.paymentStatus}`, rightColX);
+      if (invoice.irn) {
+        doc.fontSize(7.5).fillColor('#64748b').text(`IRN: ${invoice.irn} (mock)`, rightColX, undefined, { width: 230 });
+        doc.fillColor('#0f172a').fontSize(9);
+      }
       doc.moveDown(1.5);
 
       // 4. Line Items Table Header

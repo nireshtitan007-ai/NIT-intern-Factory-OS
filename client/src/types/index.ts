@@ -133,6 +133,10 @@ export interface Invoice {
   balanceDue: number;
   paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
   isDispatched: boolean;
+  irn?: string;
+  ackNo?: string;
+  ackDate?: string;
+  isMockEInvoice?: boolean;
   createdAt: string;
 }
 

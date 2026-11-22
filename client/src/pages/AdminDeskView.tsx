@@ -10,7 +10,8 @@ import {
   CreditCard, 
   Download, 
   RefreshCw,
-  MapPin 
+  MapPin,
+  FileCode 
 } from 'lucide-react';
 
 export const AdminDeskView: React.FC = () => {
@@ -109,6 +110,23 @@ export const AdminDeskView: React.FC = () => {
       }
     } catch (e: any) {
       alert(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateEInvoice = async (invoiceId: string) => {
+    setLoading(true);
+    try {
+      const res = await api.generateMockEInvoice(invoiceId);
+      if (res.success) {
+        setNotification('Mock e-Invoice IRN successfully generated.');
+        loadAll();
+      } else {
+        alert('Failed to generate mock e-Invoice: ' + (res.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      alert('Error generating mock e-Invoice: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -320,7 +338,16 @@ export const AdminDeskView: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {invoices.map(inv => (
                   <tr key={inv._id} className="hover:bg-slate-50/80">
-                    <td className="p-3 font-extrabold text-indigo-600">{inv.invoiceNumber}</td>
+                    <td className="p-3 font-extrabold text-indigo-600">
+                      <div>{inv.invoiceNumber}</div>
+                      {inv.irn && (
+                        <div className="mt-1">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-50 text-purple-700 border border-purple-200" title={`Full IRN: ${inv.irn}`}>
+                            IRN: {inv.irn.substring(0, 8)}...{inv.irn.substring(inv.irn.length - 4)} (mock)
+                          </span>
+                        </div>
+                      )}
+                    </td>
                     <td className="p-3 font-medium text-slate-900">{inv.customerName}</td>
                     <td className="p-3 text-slate-500">{inv.placeOfSupply}</td>
                     <td className="p-3 font-semibold text-slate-900">₹{inv.taxableValue.toLocaleString('en-IN')}</td>
@@ -348,7 +375,7 @@ export const AdminDeskView: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="p-3 text-center space-x-2">
+                    <td className="p-3 text-center space-x-2 whitespace-nowrap">
                       {/* Download PDF button */}
                       <a
                         href={api.getInvoicePDFUrl(inv._id)}
@@ -359,6 +386,29 @@ export const AdminDeskView: React.FC = () => {
                         <Download className="w-3.5 h-3.5" />
                         <span>PDF</span>
                       </a>
+
+                      {/* e-Invoice JSON / Generate button */}
+                      {inv.irn ? (
+                        <a
+                          href={api.getEInvoiceJsonUrl(inv._id)}
+                          download={`einvoice-${inv.invoiceNumber.replace(/\//g, '_')}.json`}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200 transition"
+                          title="Download NIC v1.1 e-Invoice JSON (mock)"
+                        >
+                          <FileCode className="w-3.5 h-3.5" />
+                          <span>e-Invoice JSON (mock)</span>
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => handleGenerateEInvoice(inv._id)}
+                          disabled={loading}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition"
+                          title="Generate NIC compliant mock IRN & Ack"
+                        >
+                          <FileCode className="w-3.5 h-3.5" />
+                          <span>Generate e-Invoice (mock)</span>
+                        </button>
+                      )}
 
                       {/* Dispatch button */}
                       {!inv.isDispatched && (

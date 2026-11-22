@@ -213,6 +213,12 @@ export const api = {
   // Invoices & PDF
   getInvoices: () => fetch(`${API_BASE}/invoices`, { headers: getAuthHeaders() }).then(r => r.json()),
   getInvoicePDFUrl: (invoiceId: string) => `${API_BASE}/invoices/${invoiceId}/pdf`,
+  getEInvoiceJsonUrl: (invoiceId: string) => `${API_BASE}/invoices/${invoiceId}/einvoice-json`,
+  generateMockEInvoice: (invoiceId: string) =>
+    fetch(`${API_BASE}/invoices/${invoiceId}/einvoice/generate-mock`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    }).then(r => r.json()),
 
   // Payments
   getPayments: () => fetch(`${API_BASE}/payments`, { headers: getAuthHeaders() }).then(r => r.json()),

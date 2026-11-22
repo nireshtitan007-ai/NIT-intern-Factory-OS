@@ -127,6 +127,8 @@ router.post('/invoices/:id/cancel', authenticate, requireRoles('admin', 'owner')
 router.post('/invoices/:id/dispatch', authenticate, requireRoles('admin', 'owner', 'inventory'), ApiController.dispatchOrder);
 router.get('/invoices/:id/pdf', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'salesman', 'sales_manager'), ApiController.getInvoicePDF);
 router.get('/invoices/:id/credit-note/pdf', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCreditNotePDF);
+router.get('/invoices/:id/einvoice-json', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getEInvoiceJSON);
+router.post('/invoices/:id/einvoice/generate-mock', authenticate, requireRoles('admin', 'owner', 'accountant'), ApiController.generateMockEInvoice);
 
 // --- Collections & Payments ---
 router.get('/payments', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getPayments);
