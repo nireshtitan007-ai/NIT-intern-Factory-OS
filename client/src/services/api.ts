@@ -287,6 +287,21 @@ export const api = {
     document.body.removeChild(a);
   },
 
+  downloadTallyXml: async (from?: string, to?: string) => {
+    const params = new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) });
+    const res = await fetch(`${API_BASE}/reports/tally-sales-vouchers?${params.toString()}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Download failed: ' + res.statusText);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tally_sales_vouchers_${from || 'start'}_to_${to || 'end'}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+
   // Legacy CSV Exports
   exportSalesRegisterCSV: () => `${API_BASE}/reports/sales-register?format=csv`,
   exportStockSummaryCSV: () => `${API_BASE}/inventory/stock-summary?format=csv`,

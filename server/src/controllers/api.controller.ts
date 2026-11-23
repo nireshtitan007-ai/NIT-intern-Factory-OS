@@ -31,6 +31,7 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { Serializers } from '../utils/serializers';
 import { ReportExporter, ReportColumnDef } from '../utils/reportExporter';
 import { paiseToRupees } from '../utils/money';
+import { TallyExportUtil } from '../utils/tallyExport';
 
 function parseDateRange(req: Request): { from?: Date; to?: Date } {
   let from: Date | undefined;
@@ -1058,6 +1059,27 @@ export class ApiController {
         rows,
         { register: rows, dateRange: { from, to } }
       );
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getTallySalesVouchers(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const { from, to } = parseDateRange(req);
+      const query: any = { isCancelled: { $ne: true } };
+      if (tenantId) query.tenantId = tenantId;
+      if (from || to) {
+        query.createdAt = {};
+        if (from) query.createdAt.$gte = from;
+        if (to) query.createdAt.$lte = to;
+      }
+      const invoices = await Invoice.find(query).sort({ createdAt: 1 });
+      const xml = TallyExportUtil.generateSalesVouchersXml(invoices);
+      res.setHeader('Content-Type', 'application/xml');
+      res.setHeader('Content-Disposition', 'attachment; filename="tally_sales_vouchers.xml"');
+      return res.status(200).send(xml);
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

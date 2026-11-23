@@ -6,7 +6,8 @@ import {
   RefreshCw,
   Calendar,
   Filter,
-  FileText
+  FileText,
+  FileCode
 } from 'lucide-react';
 
 export const AuditorView: React.FC = () => {
@@ -114,6 +115,19 @@ export const AuditorView: React.FC = () => {
     }
   };
 
+  const handleTallyExport = async () => {
+    try {
+      setExporting(true);
+      const fromISO = fromDate ? new Date(`${fromDate}T00:00:00.000Z`).toISOString() : undefined;
+      const toISO = toDate ? new Date(`${toDate}T23:59:59.999Z`).toISOString() : undefined;
+      await api.downloadTallyXml(fromISO, toISO);
+    } catch (err: any) {
+      alert('Tally export failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
@@ -214,6 +228,17 @@ export const AuditorView: React.FC = () => {
             <FileText className="w-3.5 h-3.5 text-red-600" />
             <span>PDF</span>
           </button>
+          {activeTab === 'sales' && (
+            <button
+              onClick={handleTallyExport}
+              disabled={exporting}
+              className="inline-flex items-center space-x-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition"
+              title="Export sales vouchers XML for Tally ERP 9 / Tally Prime import"
+            >
+              <FileCode className="w-3.5 h-3.5 text-amber-700" />
+              <span>Tally XML</span>
+            </button>
+          )}
         </div>
       </div>
 

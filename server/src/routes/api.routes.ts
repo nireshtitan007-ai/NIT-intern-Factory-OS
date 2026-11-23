@@ -139,6 +139,7 @@ router.post('/payments', authenticate, requireRoles('admin', 'owner', 'accountan
 // --- Regulatory, Financial & Production Reports ---
 router.get('/reports/purchase-register', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'purchase'), ApiController.getPurchaseRegister);
 router.get('/reports/sales-register', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getSalesRegister);
+router.get('/reports/tally-sales-vouchers', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getTallySalesVouchers);
 router.get('/reports/customer-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCustomerWiseSales);
 router.get('/reports/customer-wise-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCustomerWiseSales);
 router.get('/reports/product-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getProductWiseSales);
