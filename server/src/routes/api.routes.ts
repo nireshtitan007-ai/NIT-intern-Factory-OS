@@ -108,6 +108,7 @@ router.get('/purchases', authenticate, requireRoles('admin', 'owner', 'productio
 router.post('/purchases', authenticate, requireRoles('admin', 'owner', 'production', 'purchase', 'inventory'), validateBody(recordPurchaseSchema), ApiController.recordPurchase);
 
 // --- Production & Manufacturing ---
+router.get('/production/plan', authenticate, requireRoles('admin', 'owner', 'production'), ApiController.getProductionPlan);
 router.get('/production/runs', authenticate, requireRoles('admin', 'owner', 'production', 'accountant', 'auditor'), ApiController.getProductionRuns);
 router.post('/production/runs', authenticate, requireRoles('admin', 'owner', 'production'), validateBody(executeProductionRunSchema), ApiController.executeProductionRun);
 router.put('/production/runs/:id/costs', authenticate, requireRoles('admin', 'owner', 'production', 'accountant'), validateBody(updateOverheadsSchema), ApiController.updateRunOverheads);
@@ -136,6 +137,7 @@ router.get('/payments', authenticate, requireRoles('admin', 'owner', 'accountant
 router.post('/payments', authenticate, requireRoles('admin', 'owner', 'accountant'), validateBody(recordPaymentSchema), ApiController.recordPayment);
 
 // --- Regulatory, Financial & Production Reports ---
+router.get('/reports/purchase-register', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor', 'purchase'), ApiController.getPurchaseRegister);
 router.get('/reports/sales-register', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getSalesRegister);
 router.get('/reports/customer-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCustomerWiseSales);
 router.get('/reports/customer-wise-sales', authenticate, requireRoles('admin', 'owner', 'accountant', 'auditor'), ApiController.getCustomerWiseSales);

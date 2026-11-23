@@ -14,7 +14,8 @@ import {
   ShieldCheck, 
   Compass, 
   User,
-  Target
+  Target,
+  TrendingUp
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -51,10 +52,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const allRoles: Array<{ role: UserRole; label: string; icon: any; desc: string }> = [
     { role: 'admin', label: 'Admin Control Centre', icon: Building2, desc: 'Central Platform Oversight' },
+    { role: 'owner', label: 'Owner Intelligence', icon: TrendingUp, desc: 'Executive Profit & Fleet Visibility' },
     { role: 'salesman', label: 'Field Terminal', icon: Compass, desc: 'Mobile Route Orders' },
     { role: 'production', label: 'Production Floor', icon: Factory, desc: 'BOM & Batch Runs' },
     { role: 'accountant', label: 'Central Inventory', icon: Boxes, desc: 'Authoritative Stock Ledger' },
-    { role: 'owner', label: 'Accounts & Audit', icon: FileSpreadsheet, desc: 'GST, Sales, Traceability' },
+    { role: 'auditor', label: 'Auditor Portal', icon: FileSpreadsheet, desc: 'GST, Sales, Traceability' },
     { role: 'whatsapp', label: 'WhatsApp Automation', icon: MessageSquare, desc: 'OpenWA Notification Hub' },
   ];
 

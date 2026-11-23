@@ -304,4 +304,61 @@ describe('Step 2: BOM-Driven Production, Multi-SKU, Atomic Ledger & FEFO Accepta
       expect(updatedRun.costPerPacket).toBe(31.14);
     });
   });
+
+  describe('6. Production Planning & Purchase Register API Suite', () => {
+    it('GET /api/production/plan calculates net shortage and material requirements for active sales orders', async () => {
+      // Create an order for 250 packets of MUR-200G
+      const customer = seededData.retailerA;
+      const prod = await Product.findOne({ code: 'MUR-200G' });
+
+      await SalesOrderService.createOrder({
+        customerId: customer._id.toString(),
+        items: [{ productCode: prod!.code, quantity: 250, unitPrice: 50 }],
+        salesmanName: 'Salesman A'
+      });
+
+      const res = await request(app)
+        .get('/api/production/plan')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.plan).toBeDefined();
+      expect(res.body.plan.activeOrderCount).toBeGreaterThanOrEqual(1);
+
+      const murPlan = res.body.plan.suggestions.find((s: any) => s.productCode === 'MUR-200G');
+      expect(murPlan).toBeDefined();
+      expect(murPlan.demandedQty).toBeGreaterThanOrEqual(250);
+      expect(murPlan.standardBatchSize).toBe(200);
+      expect(murPlan.recommendedBatches).toBeGreaterThanOrEqual(1);
+      expect(murPlan.materialsNeeded.length).toBeGreaterThan(0);
+    });
+
+    it('GET /api/reports/purchase-register returns purchases with correct columns and totals', async () => {
+      await PurchaseService.recordPurchase({
+        supplierName: 'Premier Milling Corp',
+        items: [{ materialCode: 'FLOUR', quantity: 60, rate: 45 }],
+        notes: 'Test purchase for purchase register'
+      });
+
+      const res = await request(app)
+        .get('/api/reports/purchase-register')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.purchases)).toBe(true);
+      expect(res.body.purchases.length).toBeGreaterThanOrEqual(1);
+
+      const purchase = res.body.purchases[0];
+      expect(purchase.supplierName).toBeDefined();
+      expect(purchase.totalAmount).toBeGreaterThan(0);
+
+      // Verify auditor role has read access
+      const auditorRes = await request(app)
+        .get('/api/reports/purchase-register')
+        .set('Authorization', `Bearer ${auditorToken}`);
+      expect(auditorRes.status).toBe(200);
+    });
+  });
 });

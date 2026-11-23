@@ -148,6 +148,7 @@ export const api = {
   // Inventory & Reorder Alerts
   getReorderAlerts: () => fetch(`${API_BASE}/inventory/reorder-alerts`, { headers: getAuthHeaders() }).then(r => r.json()),
   getStockSummary: () => fetch(`${API_BASE}/inventory/stock-summary`, { headers: getAuthHeaders() }).then(r => r.json()),
+  reconcileInventory: () => fetch(`${API_BASE}/inventory/reconcile`, { method: 'POST', headers: getAuthHeaders() }).then(r => r.json()),
   getStockLedger: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
     return fetch(`${API_BASE}/inventory/ledger${qs}`, { headers: getAuthHeaders() }).then(r => r.json());
@@ -164,6 +165,7 @@ export const api = {
 
   // Production
   getProductionRuns: () => fetch(`${API_BASE}/production/runs`, { headers: getAuthHeaders() }).then(r => r.json()),
+  getProductionPlan: () => fetch(`${API_BASE}/production/plan`, { headers: getAuthHeaders() }).then(r => r.json()),
   executeProductionRun: (data: any) => 
     fetch(`${API_BASE}/production/runs`, {
       method: 'POST',
@@ -183,6 +185,12 @@ export const api = {
   createOrder: (data: any) => 
     fetch(`${API_BASE}/orders`, {
       method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  editOrder: (orderId: string, data: any) =>
+    fetch(`${API_BASE}/orders/${orderId}`, {
+      method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
     }).then(r => r.json()),
@@ -210,10 +218,23 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ dispatcherName })
     }).then(r => r.json()),
+  dispatchOrderWithItems: (invoiceId: string, items?: Array<{ productCode: string; quantity: number }>, dispatcherName: string = 'Admin') => 
+    fetch(`${API_BASE}/invoices/${invoiceId}/dispatch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ items, dispatcherName })
+    }).then(r => r.json()),
 
   // Invoices & PDF
   getInvoices: () => fetch(`${API_BASE}/invoices`, { headers: getAuthHeaders() }).then(r => r.json()),
+  cancelInvoice: (invoiceId: string, reason: string) =>
+    fetch(`${API_BASE}/invoices/${invoiceId}/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reason })
+    }).then(r => r.json()),
   getInvoicePDFUrl: (invoiceId: string) => `${API_BASE}/invoices/${invoiceId}/pdf`,
+  getCreditNotePDFUrl: (invoiceId: string) => `${API_BASE}/invoices/${invoiceId}/credit-note/pdf`,
   getEInvoiceJsonUrl: (invoiceId: string) => `${API_BASE}/invoices/${invoiceId}/einvoice-json`,
   generateMockEInvoice: (invoiceId: string) =>
     fetch(`${API_BASE}/invoices/${invoiceId}/einvoice/generate-mock`, {
@@ -231,6 +252,8 @@ export const api = {
     }).then(r => r.json()),
 
   // Reports (Section 4.6 & Auditor Portal)
+  getPurchaseRegister: (from?: string, to?: string) => 
+    fetch(`${API_BASE}/reports/purchase-register?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
   getSalesRegister: (from?: string, to?: string) => 
     fetch(`${API_BASE}/reports/sales-register?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) })}`, { headers: getAuthHeaders() }).then(r => r.json()),
   getGSTSummary: (from?: string, to?: string) => 

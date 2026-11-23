@@ -114,6 +114,7 @@ export interface Invoice {
   isInterState: boolean;
   items: Array<{
     productId: string;
+    productCode?: string;
     productName: string;
     hsnCode: string;
     quantity: number;
@@ -132,6 +133,9 @@ export interface Invoice {
   paidAmount: number;
   balanceDue: number;
   paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+  status?: string;
+  creditNoteNumber?: string;
+  cancellationReason?: string;
   isDispatched: boolean;
   irn?: string;
   ackNo?: string;
@@ -151,6 +155,7 @@ export interface StockSummaryItem {
   issuesOrSales: number;
   closingStock: number;
   ledgerBalance: number;
+  reorderLevel?: number;
   rate: number;
   stockValue: number;
 }
@@ -167,6 +172,8 @@ export interface StockMovement {
   totalCost: number;
   sourceDocType: string;
   sourceDocId?: string;
+  batchNumber?: string;
+  expiryDate?: string | Date;
   runningBalance: number;
   notes?: string;
   createdBy: string;

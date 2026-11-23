@@ -6,6 +6,7 @@ import {
   ProductionRun,
   IProductionRun,
   StockMovement,
+  SalesOrder,
   AuditLog,
   getNextSequence
 } from '../models';
@@ -14,6 +15,33 @@ import { WhatsAppService } from './whatsapp.service';
 import { RealtimeService } from './realtime.service';
 import { rupeesToPaise, paiseToRupees, mulQtyRate } from '../utils/money';
 import { convert } from '../utils/units';
+
+export interface ProductionMaterialRequirement {
+  materialCode: string;
+  materialName: string;
+  unit: string;
+  qtyNeeded: number;
+  currentStock: number;
+  isShort: boolean;
+  shortageQty: number;
+}
+
+export interface ProductionPlanSuggestion {
+  productCode: string;
+  productName: string;
+  currentStock: number;
+  demandedQty: number;
+  netShortage: number;
+  standardBatchSize: number;
+  recommendedBatches: number;
+  plannedProductionQty: number;
+  materialsNeeded: ProductionMaterialRequirement[];
+}
+
+export interface ProductionPlanResult {
+  activeOrderCount: number;
+  suggestions: ProductionPlanSuggestion[];
+}
 
 export interface ExecuteProductionRunParams {
   tenantId?: string;
@@ -457,6 +485,74 @@ export class ProductionService {
     } finally {
       session.endSession();
     }
+  }
+
+  /**
+   * Computes automated production planning based on sales demand and BOM requirements
+   */
+  static async getProductionPlan(tenantId?: string): Promise<ProductionPlanResult> {
+    const tid = tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
+    const activeOrders = await SalesOrder.find({
+      tenantId: tid,
+      status: { $in: ['SUBMITTED', 'APPROVED', 'INVOICED'] }
+    }).lean();
+
+    const demandMap: Record<string, number> = {};
+    for (const order of activeOrders) {
+      for (const item of order.items) {
+        demandMap[item.productCode] = (demandMap[item.productCode] || 0) + item.quantity;
+      }
+    }
+
+    const products = await Product.find({ tenantId: tid, active: true }).lean();
+    const suggestions: ProductionPlanSuggestion[] = [];
+
+    for (const prod of products) {
+      const demanded = demandMap[prod.code] || 0;
+      const currentStock = prod.currentStock || 0;
+      const netShortage = Math.max(0, demanded - currentStock);
+
+      const bom = await BOM.findOne({ tenantId: tid, productCode: prod.code, active: true }).lean();
+      const standardBatchSize = bom?.batchExpectedOutput || 200;
+      const recommendedBatches = netShortage > 0 ? Math.ceil(netShortage / standardBatchSize) : 0;
+      const plannedProductionQty = recommendedBatches * standardBatchSize;
+
+      const materialsNeeded: ProductionMaterialRequirement[] = [];
+      if (bom && recommendedBatches > 0) {
+        const allMaterials = [...(bom.rawMaterials || []), ...(bom.packagingMaterials || [])];
+        for (const item of allMaterials) {
+          const totalQtyNeeded = item.quantityPerBatch * recommendedBatches;
+          const rawMat = await RawMaterial.findOne({ tenantId: tid, code: item.materialCode }).lean();
+          const currentMatStock = rawMat?.currentStock || 0;
+          materialsNeeded.push({
+            materialCode: item.materialCode,
+            materialName: item.materialName,
+            unit: item.unit,
+            qtyNeeded: totalQtyNeeded,
+            currentStock: currentMatStock,
+            isShort: currentMatStock < totalQtyNeeded,
+            shortageQty: Math.max(0, totalQtyNeeded - currentMatStock)
+          });
+        }
+      }
+
+      suggestions.push({
+        productCode: prod.code,
+        productName: prod.name,
+        currentStock,
+        demandedQty: demanded,
+        netShortage,
+        standardBatchSize,
+        recommendedBatches,
+        plannedProductionQty,
+        materialsNeeded
+      });
+    }
+
+    return {
+      activeOrderCount: activeOrders.length,
+      suggestions
+    };
   }
 
   /**

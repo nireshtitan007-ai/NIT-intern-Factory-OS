@@ -29,9 +29,10 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
+import { AdminDeskView } from './AdminDeskView';
 
 export const AdminControlCenterView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'approvals' | 'monitoring' | 'inquiries'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'desk' | 'users' | 'permissions' | 'approvals' | 'masters' | 'monitoring' | 'inquiries'>('overview');
   const [loading, setLoading] = useState(true);
   const [adminData, setAdminData] = useState<any>(null);
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -40,6 +41,21 @@ export const AdminControlCenterView: React.FC = () => {
   const [showPasswordModal, setShowPasswordModal] = useState<AppUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Masters Management State
+  const [mastersSubTab, setMastersSubTab] = useState<'customers' | 'products' | 'rawMaterials' | 'boms' | 'suppliers'>('customers');
+  const [customersList, setCustomersList] = useState<any[]>([]);
+  const [productsList, setProductsList] = useState<any[]>([]);
+  const [rawMaterialsList, setRawMaterialsList] = useState<any[]>([]);
+  const [bomsList, setBomsList] = useState<any[]>([]);
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
+
+  // Masters Create Modal State
+  const [showMasterModal, setShowMasterModal] = useState<string | null>(null);
+  const [newCustomer, setNewCustomer] = useState({ code: '', name: '', gstin: '', state: 'Tamil Nadu', stateCode: '33', routeTerritory: 'Route 1 - Thillai Nagar', creditPeriodDays: 30 });
+  const [newProduct, setNewProduct] = useState({ code: '', name: '', hsnCode: '1905', sellingPrice: 50, gstRate: 5 });
+  const [newRawMaterial, setNewRawMaterial] = useState({ code: '', name: '', category: 'RAW_MATERIAL', unit: 'kg', reorderLevel: 20 });
+  const [newSupplier, setNewSupplier] = useState({ code: '', name: '', contactPerson: '', phone: '', email: '', gstin: '', state: 'Tamil Nadu' });
 
   // New User Form State
   const [formData, setFormData] = useState({
@@ -52,6 +68,25 @@ export const AdminControlCenterView: React.FC = () => {
     phone: '',
     permissions: ['orders:create', 'orders:view']
   });
+
+  const loadMasters = async () => {
+    try {
+      const [cRes, pRes, rRes, bRes, sRes] = await Promise.all([
+        api.getCustomers(true),
+        api.getProducts(true),
+        api.getRawMaterials(true),
+        api.getBOMs(true),
+        api.getSuppliers(true)
+      ]);
+      if (cRes.success) setCustomersList(cRes.customers);
+      if (pRes.success) setProductsList(pRes.products);
+      if (rRes.success) setRawMaterialsList(rRes.materials);
+      if (bRes.success) setBomsList(bRes.boms);
+      if (sRes.success) setSuppliersList(sRes.suppliers);
+    } catch (e) {
+      console.error('Failed to load masters:', e);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -71,6 +106,7 @@ export const AdminControlCenterView: React.FC = () => {
       if (inqRes.success) {
         setInquiriesList(inqRes.inquiries || []);
       }
+      loadMasters();
     } catch (e: any) {
       console.error('Failed to load admin control centre data:', e);
     } finally {
@@ -173,6 +209,74 @@ export const AdminControlCenterView: React.FC = () => {
     }
   };
 
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.createCustomer(newCustomer);
+      if (res.success) {
+        setActionMessage({ type: 'success', text: `Customer ${newCustomer.name} created!` });
+        setShowMasterModal(null);
+        setNewCustomer({ code: '', name: '', gstin: '', state: 'Tamil Nadu', stateCode: '33', routeTerritory: 'Route 1 - Thillai Nagar', creditPeriodDays: 30 });
+        loadMasters();
+      } else {
+        setActionMessage({ type: 'error', text: res.error });
+      }
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.createProduct(newProduct);
+      if (res.success) {
+        setActionMessage({ type: 'success', text: `Product ${newProduct.name} created!` });
+        setShowMasterModal(null);
+        setNewProduct({ code: '', name: '', hsnCode: '1905', sellingPrice: 50, gstRate: 5 });
+        loadMasters();
+      } else {
+        setActionMessage({ type: 'error', text: res.error });
+      }
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleCreateRawMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.createRawMaterial(newRawMaterial);
+      if (res.success) {
+        setActionMessage({ type: 'success', text: `Raw Material ${newRawMaterial.name} created!` });
+        setShowMasterModal(null);
+        setNewRawMaterial({ code: '', name: '', category: 'RAW_MATERIAL', unit: 'kg', reorderLevel: 20 });
+        loadMasters();
+      } else {
+        setActionMessage({ type: 'error', text: res.error });
+      }
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleCreateSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.createSupplier(newSupplier);
+      if (res.success) {
+        setActionMessage({ type: 'success', text: `Supplier ${newSupplier.name} created!` });
+        setShowMasterModal(null);
+        setNewSupplier({ code: '', name: '', contactPerson: '', phone: '', email: '', gstin: '', state: 'Tamil Nadu' });
+        loadMasters();
+      } else {
+        setActionMessage({ type: 'error', text: res.error });
+      }
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message });
+    }
+  };
+
   const overview = adminData?.companyOverview || {};
   const monitoring = adminData?.systemMonitoring || {};
   const pendingOrders = adminData?.pendingApprovals?.orders || [];
@@ -234,9 +338,11 @@ export const AdminControlCenterView: React.FC = () => {
       <div className="flex border-b border-subtle-border bg-white rounded-t-xl px-4 pt-2 shadow-sm space-x-4 overflow-x-auto">
         {[
           { id: 'overview', label: 'Company Overview & Health', icon: Activity },
+          { id: 'desk', label: 'Order Desk & Invoicing', icon: FileText },
+          { id: 'approvals', label: 'Approval Centre', icon: CheckCircle, badge: pendingOrders.length },
+          { id: 'masters', label: 'Master Data Management', icon: Boxes },
           { id: 'users', label: 'User Management', icon: Users, badge: usersList.length },
           { id: 'permissions', label: 'Role & Permission Matrix', icon: ShieldAlert },
-          { id: 'approvals', label: 'Approval Centre', icon: CheckCircle, badge: pendingOrders.length },
           { id: 'monitoring', label: 'System Monitoring & Audit', icon: Database },
           { id: 'inquiries', label: 'Public Inquiries & Leads', icon: Mail, badge: inquiriesList.filter(i => i.status === 'new').length },
         ].map((tab) => {
@@ -369,6 +475,401 @@ export const AdminControlCenterView: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Subtab: Order Desk & Invoicing */}
+      {activeTab === 'desk' && (
+        <AdminDeskView />
+      )}
+
+      {/* Subtab: Master Data Management */}
+      {activeTab === 'masters' && (
+        <div className="space-y-4">
+          {/* Masters Sub-navigation */}
+          <div className="bg-white rounded-xl border border-subtle-border p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-2 overflow-x-auto">
+              {[
+                { id: 'customers', label: 'Customers', count: customersList.length },
+                { id: 'products', label: 'Products', count: productsList.length },
+                { id: 'rawMaterials', label: 'Raw Materials', count: rawMaterialsList.length },
+                { id: 'boms', label: 'Bills of Materials (BOM)', count: bomsList.length },
+                { id: 'suppliers', label: 'Suppliers', count: suppliersList.length },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  onClick={() => setMastersSubTab(st.id as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                    mastersSubTab === st.id
+                      ? 'bg-forest-700 text-white'
+                      : 'bg-cream-100 text-charcoal-700 hover:bg-cream-200'
+                  }`}
+                >
+                  <span>{st.label}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                    mastersSubTab === st.id ? 'bg-forest-900 text-cream-100' : 'bg-cream-300 text-charcoal-800'
+                  }`}>
+                    {st.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowMasterModal(mastersSubTab)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-forest-700 hover:bg-forest-800 text-white rounded-lg text-xs font-semibold shadow-sm transition flex-shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add {mastersSubTab === 'rawMaterials' ? 'Material' : mastersSubTab === 'boms' ? 'BOM' : mastersSubTab.slice(0, -1)}</span>
+            </button>
+          </div>
+
+          {/* Customers Table */}
+          {mastersSubTab === 'customers' && (
+            <div className="bg-white rounded-xl border border-subtle-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-cream-100 text-charcoal-700 uppercase font-semibold border-b border-subtle-border">
+                    <tr>
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4">Customer Name</th>
+                      <th className="py-3 px-4">GSTIN</th>
+                      <th className="py-3 px-4">State</th>
+                      <th className="py-3 px-4">Route Territory</th>
+                      <th className="py-3 px-4">Credit Period</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-subtle-divider">
+                    {customersList.map((c: any) => (
+                      <tr key={c._id} className="hover:bg-cream-50 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-forest-700">{c.code}</td>
+                        <td className="py-3 px-4 font-bold text-charcoal-900">{c.name}</td>
+                        <td className="py-3 px-4 font-mono text-charcoal-600">{c.gstin}</td>
+                        <td className="py-3 px-4 text-charcoal-700">{c.state} ({c.stateCode})</td>
+                        <td className="py-3 px-4 text-charcoal-600">{c.routeTerritory || 'General'}</td>
+                        <td className="py-3 px-4 text-charcoal-600">{c.creditPeriodDays} days</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            c.active !== false ? 'bg-forest-100 text-forest-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {c.active !== false ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Products Table */}
+          {mastersSubTab === 'products' && (
+            <div className="bg-white rounded-xl border border-subtle-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-cream-100 text-charcoal-700 uppercase font-semibold border-b border-subtle-border">
+                    <tr>
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4">Product Name</th>
+                      <th className="py-3 px-4">HSN Code</th>
+                      <th className="py-3 px-4 text-right">Selling Price (₹)</th>
+                      <th className="py-3 px-4 text-right">GST Rate (%)</th>
+                      <th className="py-3 px-4 text-right">Current Stock</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-subtle-divider">
+                    {productsList.map((p: any) => (
+                      <tr key={p._id} className="hover:bg-cream-50 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-forest-700">{p.code}</td>
+                        <td className="py-3 px-4 font-bold text-charcoal-900">{p.name}</td>
+                        <td className="py-3 px-4 font-mono text-charcoal-600">{p.hsnCode}</td>
+                        <td className="py-3 px-4 text-right font-bold text-charcoal-900">₹{p.sellingPrice}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-charcoal-700">{p.gstRate}%</td>
+                        <td className="py-3 px-4 text-right font-bold text-forest-700">{p.currentStock} pkts</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            p.active !== false ? 'bg-forest-100 text-forest-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {p.active !== false ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Raw Materials Table */}
+          {mastersSubTab === 'rawMaterials' && (
+            <div className="bg-white rounded-xl border border-subtle-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-cream-100 text-charcoal-700 uppercase font-semibold border-b border-subtle-border">
+                    <tr>
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4">Material Name</th>
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">Unit</th>
+                      <th className="py-3 px-4 text-right">Reorder Level</th>
+                      <th className="py-3 px-4 text-right">Current Stock</th>
+                      <th className="py-3 px-4 text-right">WAC Rate (₹)</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-subtle-divider">
+                    {rawMaterialsList.map((m: any) => (
+                      <tr key={m._id} className="hover:bg-cream-50 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-forest-700">{m.code}</td>
+                        <td className="py-3 px-4 font-bold text-charcoal-900">{m.name}</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            m.category === 'PACKAGING' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {m.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-charcoal-600">{m.unit}</td>
+                        <td className="py-3 px-4 text-right text-charcoal-600">{m.reorderLevel} {m.unit}</td>
+                        <td className={`py-3 px-4 text-right font-bold ${m.currentStock <= m.reorderLevel ? 'text-red-600' : 'text-charcoal-900'}`}>
+                          {m.currentStock} {m.unit}
+                          {m.currentStock <= m.reorderLevel && (
+                            <span className="block text-[10px] text-red-600 font-semibold">Low Stock Alert</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-semibold text-charcoal-800">
+                          ₹{Number(m.currentWACRate || 0).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            m.active !== false ? 'bg-forest-100 text-forest-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {m.active !== false ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* BOMs Table */}
+          {mastersSubTab === 'boms' && (
+            <div className="bg-white rounded-xl border border-subtle-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-cream-100 text-charcoal-700 uppercase font-semibold border-b border-subtle-border">
+                    <tr>
+                      <th className="py-3 px-4">Product Code</th>
+                      <th className="py-3 px-4">Product Name</th>
+                      <th className="py-3 px-4 text-right">Standard Batch Output</th>
+                      <th className="py-3 px-4 text-right">Tolerance (%)</th>
+                      <th className="py-3 px-4">Ingredients & Packaging</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-subtle-divider">
+                    {bomsList.map((b: any) => (
+                      <tr key={b._id} className="hover:bg-cream-50 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-forest-700">{b.productCode}</td>
+                        <td className="py-3 px-4 font-bold text-charcoal-900">{b.productName}</td>
+                        <td className="py-3 px-4 text-right font-bold text-charcoal-900">{b.batchExpectedOutput} {b.outputUnit || 'packets'}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-charcoal-700">±{b.tolerancePercent || 3}%</td>
+                        <td className="py-3 px-4 text-charcoal-600 max-w-sm">
+                          {[...(b.rawMaterials || []), ...(b.packagingMaterials || [])].map((item: any) => `${item.materialName}: ${item.quantityPerBatch} ${item.unit}`).join(', ')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            b.active !== false ? 'bg-forest-100 text-forest-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {b.active !== false ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Suppliers Table */}
+          {mastersSubTab === 'suppliers' && (
+            <div className="bg-white rounded-xl border border-subtle-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-cream-100 text-charcoal-700 uppercase font-semibold border-b border-subtle-border">
+                    <tr>
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4">Supplier Name</th>
+                      <th className="py-3 px-4">Contact Person</th>
+                      <th className="py-3 px-4">Phone</th>
+                      <th className="py-3 px-4">GSTIN</th>
+                      <th className="py-3 px-4">State</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-subtle-divider">
+                    {suppliersList.map((s: any) => (
+                      <tr key={s._id} className="hover:bg-cream-50 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-forest-700">{s.code}</td>
+                        <td className="py-3 px-4 font-bold text-charcoal-900">{s.name}</td>
+                        <td className="py-3 px-4 text-charcoal-700">{s.contactPerson || '-'}</td>
+                        <td className="py-3 px-4 text-charcoal-600">{s.phone || '-'}</td>
+                        <td className="py-3 px-4 font-mono text-charcoal-600">{s.gstin || '-'}</td>
+                        <td className="py-3 px-4 text-charcoal-700">{s.state || 'Tamil Nadu'}</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                            s.active !== false ? 'bg-forest-100 text-forest-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {s.active !== false ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Master Item Creation Modal */}
+          {showMasterModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal-900/40 backdrop-blur-sm p-4">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-subtle-border space-y-4">
+                <div className="flex justify-between items-center border-b border-subtle-divider pb-2">
+                  <h3 className="font-bold text-charcoal-900 text-base">
+                    Add New {showMasterModal === 'rawMaterials' ? 'Raw Material' : showMasterModal.slice(0, -1).toUpperCase()}
+                  </h3>
+                  <button onClick={() => setShowMasterModal(null)} className="text-charcoal-400 hover:text-charcoal-700">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {showMasterModal === 'customers' && (
+                  <form onSubmit={handleCreateCustomer} className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Customer Code</label>
+                      <input type="text" required value={newCustomer.code} onChange={e => setNewCustomer({ ...newCustomer, code: e.target.value.toUpperCase() })} placeholder="CUST-NEW" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Customer Name</label>
+                      <input type="text" required value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} placeholder="Kalyan Sweets & Provisions" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">GSTIN</label>
+                      <input type="text" required value={newCustomer.gstin} onChange={e => setNewCustomer({ ...newCustomer, gstin: e.target.value.toUpperCase() })} placeholder="33AAAAA1111A1Z1" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg font-mono" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">State</label>
+                        <input type="text" required value={newCustomer.state} onChange={e => setNewCustomer({ ...newCustomer, state: e.target.value })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">Credit Days</label>
+                        <input type="number" value={newCustomer.creditPeriodDays} onChange={e => setNewCustomer({ ...newCustomer, creditPeriodDays: Number(e.target.value) })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-subtle-divider flex justify-end space-x-2">
+                      <button type="button" onClick={() => setShowMasterModal(null)} className="px-3 py-1.5 border rounded-lg">Cancel</button>
+                      <button type="submit" className="px-4 py-1.5 bg-forest-700 text-white rounded-lg font-bold">Save Customer</button>
+                    </div>
+                  </form>
+                )}
+
+                {showMasterModal === 'products' && (
+                  <form onSubmit={handleCreateProduct} className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Product Code</label>
+                      <input type="text" required value={newProduct.code} onChange={e => setNewProduct({ ...newProduct, code: e.target.value.toUpperCase() })} placeholder="MIXTURE-200G" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Product Name</label>
+                      <input type="text" required value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Spicy Mixture 200g Pack" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">Selling Price (₹)</label>
+                        <input type="number" step="0.5" required value={newProduct.sellingPrice} onChange={e => setNewProduct({ ...newProduct, sellingPrice: Number(e.target.value) })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg font-bold" />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">GST Rate (%)</label>
+                        <input type="number" required value={newProduct.gstRate} onChange={e => setNewProduct({ ...newProduct, gstRate: Number(e.target.value) })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-subtle-divider flex justify-end space-x-2">
+                      <button type="button" onClick={() => setShowMasterModal(null)} className="px-3 py-1.5 border rounded-lg">Cancel</button>
+                      <button type="submit" className="px-4 py-1.5 bg-forest-700 text-white rounded-lg font-bold">Save Product</button>
+                    </div>
+                  </form>
+                )}
+
+                {showMasterModal === 'rawMaterials' && (
+                  <form onSubmit={handleCreateRawMaterial} className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Material Code</label>
+                      <input type="text" required value={newRawMaterial.code} onChange={e => setNewRawMaterial({ ...newRawMaterial, code: e.target.value.toUpperCase() })} placeholder="BESAN-FLOUR" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Material Name</label>
+                      <input type="text" required value={newRawMaterial.name} onChange={e => setNewRawMaterial({ ...newRawMaterial, name: e.target.value })} placeholder="Gram Flour (Besan)" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">Unit</label>
+                        <select value={newRawMaterial.unit} onChange={e => setNewRawMaterial({ ...newRawMaterial, unit: e.target.value })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg">
+                          <option value="kg">kg</option>
+                          <option value="L">L</option>
+                          <option value="pcs">pcs</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">Reorder Level</label>
+                        <input type="number" value={newRawMaterial.reorderLevel} onChange={e => setNewRawMaterial({ ...newRawMaterial, reorderLevel: Number(e.target.value) })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-subtle-divider flex justify-end space-x-2">
+                      <button type="button" onClick={() => setShowMasterModal(null)} className="px-3 py-1.5 border rounded-lg">Cancel</button>
+                      <button type="submit" className="px-4 py-1.5 bg-forest-700 text-white rounded-lg font-bold">Save Material</button>
+                    </div>
+                  </form>
+                )}
+
+                {showMasterModal === 'suppliers' && (
+                  <form onSubmit={handleCreateSupplier} className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Supplier Code</label>
+                      <input type="text" required value={newSupplier.code} onChange={e => setNewSupplier({ ...newSupplier, code: e.target.value.toUpperCase() })} placeholder="SUPP-NEW" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-charcoal-700 mb-1">Supplier Name</label>
+                      <input type="text" required value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} placeholder="Kaveri Agro Traders" className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">Phone</label>
+                        <input type="text" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-charcoal-700 mb-1">GSTIN</label>
+                        <input type="text" value={newSupplier.gstin} onChange={e => setNewSupplier({ ...newSupplier, gstin: e.target.value.toUpperCase() })} className="w-full px-3 py-2 bg-cream-50 border border-subtle-border rounded-lg font-mono" />
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-subtle-divider flex justify-end space-x-2">
+                      <button type="button" onClick={() => setShowMasterModal(null)} className="px-3 py-1.5 border rounded-lg">Cancel</button>
+                      <button type="submit" className="px-4 py-1.5 bg-forest-700 text-white rounded-lg font-bold">Save Supplier</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

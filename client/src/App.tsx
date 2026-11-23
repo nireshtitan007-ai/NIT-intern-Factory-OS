@@ -9,6 +9,7 @@ import { SalesmanView } from './pages/SalesmanView';
 import { ProductionView } from './pages/ProductionView';
 import { InventoryView } from './pages/InventoryView';
 import { AuditorView } from './pages/AuditorView';
+import { OwnerView } from './pages/OwnerView';
 import { WhatsAppCenterView } from './pages/WhatsAppCenterView';
 import { UserProfileView } from './pages/UserProfileView';
 import { api } from './services/api';
@@ -34,12 +35,13 @@ export const App: React.FC = () => {
       const stored = localStorage.getItem('zenlyft_user');
       if (stored) {
         const u = JSON.parse(stored);
-        if (u.role === 'admin' || u.role === 'owner') return 'admin';
+        if (u.role === 'admin') return 'admin';
+        if (u.role === 'owner') return 'owner';
         if (u.role === 'salesman' || u.role === 'sales_manager') return 'salesman';
         if (u.role === 'production') return 'production';
         if (u.role === 'inventory') return 'accountant';
         if (u.role === 'accountant') return 'accountant';
-        if (u.role === 'auditor') return 'owner';
+        if (u.role === 'auditor') return 'auditor';
       }
     } catch {
       // fallback
@@ -131,9 +133,12 @@ export const App: React.FC = () => {
 
   const handleLoginSuccess = (user: AppUser, token: string) => {
     setCurrentUser(user);
-    if (user.role === 'admin' || user.role === 'owner') {
+    if (user.role === 'admin') {
       setCurrentRole('admin');
       navigate('/admin');
+    } else if (user.role === 'owner') {
+      setCurrentRole('owner');
+      navigate('/app/owner');
     } else if (user.role === 'salesman' || user.role === 'sales_manager') {
       setCurrentRole('salesman');
       navigate('/app/sales-terminal');
@@ -147,8 +152,8 @@ export const App: React.FC = () => {
       setCurrentRole('accountant');
       navigate('/app/reports');
     } else if (user.role === 'auditor') {
-      setCurrentRole('owner');
-      navigate('/app/reports');
+      setCurrentRole('auditor');
+      navigate('/app/audit');
     } else {
       setCurrentRole('salesman');
       navigate('/app/sales-terminal');
@@ -281,10 +286,11 @@ export const App: React.FC = () => {
         onSelectRole={(role) => {
           setCurrentRole(role);
           if (role === 'admin') navigate('/admin');
+          else if (role === 'owner') navigate('/app/owner');
           else if (role === 'salesman') navigate('/app/sales-terminal');
           else if (role === 'production') navigate('/app/production');
           else if (role === 'accountant') navigate('/app/inventory');
-          else if (role === 'owner') navigate('/app/reports');
+          else if (role === 'auditor') navigate('/app/audit');
           else if (role === 'whatsapp') navigate('/app/whatsapp');
         }}
         isOffline={isOffline}
@@ -330,7 +336,8 @@ export const App: React.FC = () => {
         {!isProfileActive && currentRole === 'salesman' && <SalesmanView isOffline={isOffline} />}
         {!isProfileActive && currentRole === 'production' && <ProductionView />}
         {!isProfileActive && currentRole === 'accountant' && <InventoryView />}
-        {!isProfileActive && currentRole === 'owner' && <AuditorView />}
+        {!isProfileActive && currentRole === 'owner' && <OwnerView onRunBenchmark={handleRunBenchmark} />}
+        {!isProfileActive && currentRole === 'auditor' && <AuditorView />}
         {!isProfileActive && currentRole === 'whatsapp' && <WhatsAppCenterView />}
       </main>
 

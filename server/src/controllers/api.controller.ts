@@ -672,6 +672,16 @@ export class ApiController {
     }
   }
 
+  static async getProductionPlan(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const plan = await ProductionService.getProductionPlan(tenantId);
+      res.json({ success: true, plan });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   static async executeProductionRun(req: Request, res: Response) {
     try {
       const tenantId = getTenantId(req);
@@ -1047,6 +1057,35 @@ export class ApiController {
         columns,
         rows,
         { register: rows, dateRange: { from, to } }
+      );
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getPurchaseRegister(req: Request, res: Response) {
+    try {
+      const tenantId = getTenantId(req);
+      const { from, to } = parseDateRange(req);
+      const rows = await ReportService.getPurchaseRegister(from, to, tenantId);
+
+      const columns: ReportColumnDef[] = [
+        { header: 'Purchase No', key: 'purchaseNumber', width: 18 },
+        { header: 'Date', key: 'date', width: 14, isDate: true },
+        { header: 'Supplier Name', key: 'supplierName', width: 25 },
+        { header: 'Items Count', key: 'itemsCount', width: 14, isNumeric: true },
+        { header: 'Total Amount (₹)', key: 'totalAmount', width: 18, isCurrency: true },
+        { header: 'Status', key: 'status', width: 14 }
+      ];
+
+      return ReportExporter.export(
+        res,
+        req.query.format as string,
+        'purchase_register',
+        'Purchase Register',
+        columns,
+        rows,
+        { purchases: rows, dateRange: { from, to } }
       );
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

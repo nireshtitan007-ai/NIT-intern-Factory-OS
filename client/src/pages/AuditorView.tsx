@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 export const AuditorView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'sales' | 'gst' | 'customers' | 'products' | 'collections' | 'outstanding' | 'production' | 'stock'>('sales');
+  const [activeTab, setActiveTab] = useState<'sales' | 'purchases' | 'gst' | 'customers' | 'products' | 'collections' | 'outstanding' | 'production' | 'stock'>('sales');
   
   // Date range defaults: 1st of current month to today
   const now = new Date();
@@ -21,6 +21,7 @@ export const AuditorView: React.FC = () => {
   const [toDate, setToDate] = useState<string>(today);
 
   const [salesRegister, setSalesRegister] = useState<any[]>([]);
+  const [purchaseRegister, setPurchaseRegister] = useState<any[]>([]);
   const [gstSummary, setGstSummary] = useState<any>(null);
   const [customerSales, setCustomerSales] = useState<any[]>([]);
   const [productSales, setProductSales] = useState<any[]>([]);
@@ -38,8 +39,9 @@ export const AuditorView: React.FC = () => {
       const fromISO = fromDate ? new Date(`${fromDate}T00:00:00.000Z`).toISOString() : undefined;
       const toISO = toDate ? new Date(`${toDate}T23:59:59.999Z`).toISOString() : undefined;
 
-      const [sRes, gRes, oRes, pRes, csRes, psRes, colRes, stkRes] = await Promise.all([
+      const [sRes, purRes, gRes, oRes, pRes, csRes, psRes, colRes, stkRes] = await Promise.all([
         api.getSalesRegister(fromISO, toISO),
+        api.getPurchaseRegister(fromISO, toISO).catch(() => ({ success: false, purchases: [] })),
         api.getGSTSummary(fromISO, toISO),
         api.getOutstanding(),
         api.getProductionReport(fromISO, toISO),
@@ -50,6 +52,7 @@ export const AuditorView: React.FC = () => {
       ]);
 
       if (sRes.success) setSalesRegister(sRes.register);
+      if (purRes.success) setPurchaseRegister(purRes.purchases);
       if (gRes.success) setGstSummary(gRes.summary);
       if (oRes.success) setOutstanding(oRes.outstanding);
       if (pRes.success) setProductionRuns(pRes.runs);
@@ -77,7 +80,10 @@ export const AuditorView: React.FC = () => {
       let endpoint = '/reports/sales-register';
       let filename = `Sales_Register_${fromDate}_to_${toDate}`;
 
-      if (activeTab === 'gst') {
+      if (activeTab === 'purchases') {
+        endpoint = '/reports/purchase-register';
+        filename = `Purchase_Register_${fromDate}_to_${toDate}`;
+      } else if (activeTab === 'gst') {
         endpoint = '/reports/gst-summary';
         filename = `GST_Summary_${fromDate}_to_${toDate}`;
       } else if (activeTab === 'customers') {
@@ -155,6 +161,7 @@ export const AuditorView: React.FC = () => {
         <div className="flex space-x-2 overflow-x-auto pb-1">
           {[
             { id: 'sales', label: 'Sales Register' },
+            { id: 'purchases', label: 'Purchase Register' },
             { id: 'gst', label: 'GSTR-1 & 3B Summary' },
             { id: 'customers', label: 'Customer-Wise' },
             { id: 'products', label: 'Product-Wise' },
@@ -254,6 +261,51 @@ export const AuditorView: React.FC = () => {
                       <td className="p-3 text-right font-bold text-charcoal-900">₹{s.grandTotal.toFixed(2)}</td>
                       <td className="p-3 text-right text-forest-700 font-bold">₹{s.paidAmount.toFixed(2)}</td>
                       <td className="p-3 text-right text-red-600 font-bold">₹{s.balanceDue.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: Purchase Register */}
+      {activeTab === 'purchases' && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700">Purchase Register ({purchaseRegister.length} records)</h2>
+            <span className="text-xs text-charcoal-400">Values in ₹ (Rupees)</span>
+          </div>
+
+          {purchaseRegister.length === 0 ? (
+            <p className="text-xs text-charcoal-500 py-6 text-center">No purchases recorded for the selected date range.</p>
+          ) : (
+            <div className="overflow-x-auto border border-subtle-border rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-cream-100 text-charcoal-500 font-semibold uppercase">
+                  <tr>
+                    <th className="p-3">Purchase No</th>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Supplier Name</th>
+                    <th className="p-3 text-right">Items Count</th>
+                    <th className="p-3 text-right">Total Amount (₹)</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-subtle-divider">
+                  {purchaseRegister.map(p => (
+                    <tr key={p.purchaseNumber} className="hover:bg-cream-50 font-mono text-[11px]">
+                      <td className="p-3 font-bold text-forest-700 font-sans">{p.purchaseNumber}</td>
+                      <td className="p-3 text-charcoal-500 font-sans">{new Date(p.date).toLocaleDateString()}</td>
+                      <td className="p-3 text-charcoal-900 font-sans font-medium">{p.supplierName}</td>
+                      <td className="p-3 text-right font-sans">{p.itemsCount}</td>
+                      <td className="p-3 text-right font-bold text-charcoal-900 font-sans">₹{Number(p.totalAmount).toLocaleString('en-IN')}</td>
+                      <td className="p-3 font-sans">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-forest-100 text-forest-700">
+                          {p.status || 'COMPLETED'}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
