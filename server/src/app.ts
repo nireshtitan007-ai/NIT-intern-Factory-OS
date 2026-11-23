@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -19,7 +21,7 @@ export const createApp = () => {
   // CORS restriction
   const allowedOrigins = process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'];
+    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:5055', 'http://127.0.0.1:5055', 'http://localhost:5000'];
 
   app.use(cors({
     origin: (origin, callback) => {
@@ -74,6 +76,18 @@ export const createApp = () => {
 
   // Mount API routes
   app.use('/api', apiRoutes);
+
+  // Static serving for built client in standalone or production mode
+  const clientDistPath = path.resolve(__dirname, '../../client/dist');
+  if (fs.existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath));
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+        return next();
+      }
+      res.sendFile(path.join(clientDistPath, 'index.html'));
+    });
+  }
 
   // Central error handling middleware - never leaks stack traces in production
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {

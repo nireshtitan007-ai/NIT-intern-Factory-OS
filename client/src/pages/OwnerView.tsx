@@ -67,23 +67,23 @@ export const OwnerView: React.FC<OwnerViewProps> = ({ onRunBenchmark }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase">Total Sales Turnover</span>
-            <p className="text-2xl font-black text-slate-900">₹{metrics.totalRevenue.toLocaleString('en-IN')}</p>
+            <p className="text-2xl font-black text-slate-900">₹{(metrics.totalRevenue || 0).toLocaleString('en-IN')}</p>
             <span className="text-[11px] text-emerald-600 font-semibold block">GST Invoices Raised</span>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase">Customer Outstanding Due</span>
-            <p className="text-2xl font-black text-red-600">₹{metrics.totalOutstanding.toLocaleString('en-IN')}</p>
-            <span className="text-[11px] text-slate-500 block">Collections: ₹{metrics.totalCollections.toLocaleString('en-IN')}</span>
+            <p className="text-2xl font-black text-red-600">₹{(metrics.totalOutstanding || 0).toLocaleString('en-IN')}</p>
+            <span className="text-[11px] text-slate-500 block">Collections: ₹{(metrics.totalCollections || 0).toLocaleString('en-IN')}</span>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase">Inventory Valuation</span>
             <p className="text-2xl font-black text-slate-900">
-              ₹{(metrics.rawStockValue + metrics.finishedGoodsStockValue).toLocaleString('en-IN')}
+              ₹{((metrics.rawStockValue || 0) + (metrics.finishedGoodsStockValue || 0)).toLocaleString('en-IN')}
             </p>
             <span className="text-[11px] text-slate-500 block">
-              FG: ₹{metrics.finishedGoodsStockValue.toLocaleString('en-IN')} | Raw: ₹{metrics.rawStockValue.toLocaleString('en-IN')}
+              FG: ₹{(metrics.finishedGoodsStockValue || 0).toLocaleString('en-IN')} | Raw: ₹{(metrics.rawStockValue || 0).toLocaleString('en-IN')}
             </span>
           </div>
 

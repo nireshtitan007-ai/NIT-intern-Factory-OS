@@ -12,7 +12,8 @@
     "test:server": "npm --prefix server test",
     "test": "npm run test:server",
     "benchmark": "npm --prefix server run benchmark",
-    "seed": "npm --prefix server run seed"
+    "seed": "npm --prefix server run seed",
+    "screenshots": "npx --prefix server ts-node --project server/tsconfig.json scripts/capture-screenshots.ts"
   }
 }
 

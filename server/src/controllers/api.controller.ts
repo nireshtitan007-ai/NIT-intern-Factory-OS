@@ -1342,12 +1342,12 @@ export class ApiController {
         Payment.find({ tenantId }).lean()
       ]);
 
-      const totalRevenue = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
-      const totalOutstanding = customers.reduce((acc, c) => acc + c.outstandingBalance, 0);
-      const totalCollections = payments.reduce((acc, p) => acc + p.amount, 0);
+      const totalRevenue = invoices.reduce((acc, inv) => acc + (inv.taxableValuePaise ? inv.taxableValuePaise / 100 : (inv.taxableValue || 0)), 0);
+      const totalOutstanding = customers.reduce((acc, c) => acc + (c.outstandingBalancePaise ? c.outstandingBalancePaise / 100 : (c.outstandingBalance || 0)), 0);
+      const totalCollections = payments.reduce((acc, p) => acc + (p.amountPaise ? p.amountPaise / 100 : (p.amount || 0)), 0);
 
-      let totalRawStockVal = rawMaterials.reduce((acc, m) => acc + (m.currentStock * (m.currentWeightedRate || m.standardRate)), 0);
-      let totalFGStockVal = products.reduce((acc, p) => acc + (p.currentStock * p.sellingPrice), 0);
+      let totalRawStockVal = rawMaterials.reduce((acc, m) => acc + (m.currentStock * (m.currentWeightedRate || m.standardRate || 0)), 0);
+      let totalFGStockVal = products.reduce((acc, p) => acc + (p.currentStock * (p.sellingPricePaise ? p.sellingPricePaise / 100 : (p.sellingPrice || 0))), 0);
 
       const latestRun = runs.length > 0 ? runs[runs.length - 1] : null;
 

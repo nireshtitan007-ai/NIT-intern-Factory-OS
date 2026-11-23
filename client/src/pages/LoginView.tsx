@@ -30,7 +30,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 }) => {
   const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(initialMode);
   const [username, setUsername] = useState('factory_admin');
-  const [password, setPassword] = useState('Admin@123');
+  const [password, setPassword] = useState('ZenLyft@123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +42,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         onSwitchToAdmin={() => {
           setLoginMode('admin');
           setUsername('factory_admin');
-          setPassword('Admin@123');
+          setPassword('ZenLyft@123');
           setError(null);
         }}
         onSwitchToStaff={() => {
@@ -56,8 +56,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   }
 
   const demoAccounts = [
-    { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive Oversight' },
-    { username: 'owner', pass: 'Admin@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board & Profitability' },
+    { username: 'factory_admin', pass: 'ZenLyft@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive Oversight' },
+    { username: 'owner', pass: 'ZenLyft@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board & Profitability' },
     { username: 'supervisor', pass: 'ZenLyft@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Floor & BOM' },
     { username: 'inventory_mgr', pass: 'ZenLyft@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Central Warehouse' },
     { username: 'accountant', pass: 'ZenLyft@123', label: 'Senior Accountant', role: 'accountant', type: 'staff', dept: 'Invoicing & Receipts' },

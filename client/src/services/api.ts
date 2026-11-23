@@ -96,8 +96,8 @@ export const api = {
     }).then(r => r.json()),
 
   // Benchmark
-  seedBenchmark: () => fetch(`${API_BASE}/benchmark/seed`, { method: 'POST' }).then(r => r.json()),
-  runBenchmark: () => fetch(`${API_BASE}/benchmark/run`, { method: 'POST' }).then(r => r.json()),
+  seedBenchmark: () => fetch(`${API_BASE}/benchmark/seed`, { method: 'POST', headers: getAuthHeaders() }).then(r => r.json()),
+  runBenchmark: () => fetch(`${API_BASE}/benchmark/run`, { method: 'POST', headers: getAuthHeaders() }).then(r => r.json()),
 
   // Masters
   getCustomers: (includeInactive?: boolean) => 

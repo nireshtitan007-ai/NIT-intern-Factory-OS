@@ -63,7 +63,7 @@ export const BenchmarkModal: React.FC<BenchmarkModalProps> = ({ isOpen, onClose,
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle-divider">
-                {result.checks.map((check, idx) => (
+                {(result.checks || (result as any).checklist || []).map((check: any, idx: number) => (
                   <tr key={idx} className="hover:bg-cream-50">
                     <td className="p-3 font-semibold text-charcoal-900">{check.metric}</td>
                     <td className="p-3 text-charcoal-500">{check.expected}</td>

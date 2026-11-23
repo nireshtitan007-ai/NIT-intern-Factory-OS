@@ -364,8 +364,8 @@ export const InventoryView: React.FC = () => {
                       <td className={`p-3 text-right font-bold ${isLow && item.category !== 'FINISHED_GOOD' ? 'text-red-600' : 'text-charcoal-900'}`}>
                         {item.closingStock} {item.unit}
                       </td>
-                      <td className="p-3 text-right text-charcoal-500">₹{item.rate.toFixed(2)}</td>
-                      <td className="p-3 text-right font-bold text-charcoal-900">₹{item.stockValue.toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right text-charcoal-500">₹{(item.rate || 0).toFixed(2)}</td>
+                      <td className="p-3 text-right font-bold text-charcoal-900">₹{(item.stockValue || 0).toLocaleString('en-IN')}</td>
                     </tr>
                   );
                 })}

@@ -39,7 +39,7 @@ export const App: React.FC = () => {
         if (u.role === 'owner') return 'owner';
         if (u.role === 'salesman' || u.role === 'sales_manager') return 'salesman';
         if (u.role === 'production') return 'production';
-        if (u.role === 'inventory') return 'accountant';
+        if (u.role === 'inventory') return 'inventory';
         if (u.role === 'accountant') return 'accountant';
         if (u.role === 'auditor') return 'auditor';
       }
@@ -335,7 +335,7 @@ export const App: React.FC = () => {
         {/* Operational Roles */}
         {!isProfileActive && currentRole === 'salesman' && <SalesmanView isOffline={isOffline} />}
         {!isProfileActive && currentRole === 'production' && <ProductionView />}
-        {!isProfileActive && currentRole === 'accountant' && <InventoryView />}
+        {!isProfileActive && (currentRole === 'inventory' || currentRole === 'accountant') && <InventoryView />}
         {!isProfileActive && currentRole === 'owner' && <OwnerView onRunBenchmark={handleRunBenchmark} />}
         {!isProfileActive && currentRole === 'auditor' && <AuditorView />}
         {!isProfileActive && currentRole === 'whatsapp' && <WhatsAppCenterView />}
