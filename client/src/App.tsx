@@ -71,6 +71,23 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Listen to session expiry events (401 from API)
+  useEffect(() => {
+    const handleAuthExpired = (e: any) => {
+      localStorage.removeItem('zenlyft_auth_token');
+      localStorage.removeItem('zenlyft_token');
+      localStorage.removeItem('zenlyft_user');
+      setCurrentUser(null);
+      setLiveToast({
+        type: 'warning',
+        title: 'Session Expired',
+        desc: e?.detail || 'Your session has expired. Please sign in again.'
+      });
+    };
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => window.removeEventListener('auth:expired', handleAuthExpired);
+  }, []);
+
   // Real-time EventSource listener for live multi-user sync
   useEffect(() => {
     if (!currentUser) return;
@@ -268,6 +285,20 @@ export const App: React.FC = () => {
         {!isProfileActive && currentRole === 'owner' && <OwnerView onRunBenchmark={handleRunBenchmark} />}
         {!isProfileActive && currentRole === 'auditor' && <AuditorView />}
         {!isProfileActive && currentRole === 'whatsapp' && <WhatsAppCenterView />}
+
+        {/* 404 Fallback for unknown routes */}
+        {!isProfileActive && !['admin', 'owner', 'salesman', 'production', 'inventory', 'accountant', 'auditor', 'whatsapp'].includes(currentRole) && (
+          <div className="max-w-md mx-auto my-16 bg-white p-8 rounded-2xl border border-subtle-border text-center space-y-4">
+            <h2 className="text-xl font-bold text-charcoal-900">404 - Module Not Found</h2>
+            <p className="text-xs text-charcoal-500">The requested resource or page path does not exist in ZenLyft OS.</p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-4 py-2 bg-forest-700 text-white rounded-xl text-xs font-semibold hover:bg-forest-800 transition"
+            >
+              Return to Workplace
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Benchmark Results Modal */}

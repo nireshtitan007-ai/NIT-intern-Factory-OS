@@ -63,6 +63,9 @@ router.get('/realtime/events', authenticate, (req, res) => RealtimeService.subsc
 router.post('/benchmark/seed', authenticate, requireAdmin, requireNonProduction, ApiController.seedBenchmark);
 router.post('/benchmark/run', authenticate, requireAdmin, requireNonProduction, ApiController.runBenchmark);
 
+// --- Factory Settings ---
+router.get('/settings', authenticate, ApiController.getSettings);
+
 // --- Master Data (Shared across operational modules with complete CRUD & audit logging) ---
 // Customers
 router.get('/customers', authenticate, requireRoles('admin', 'owner', 'salesman', 'sales_manager', 'accountant', 'auditor'), ApiController.getCustomers);

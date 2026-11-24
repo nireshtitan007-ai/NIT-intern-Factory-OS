@@ -91,7 +91,7 @@ const getSalesmanLocation = (): Promise<{ lat: number; lng: number; accuracyMete
 };
 
 export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
-  const [activeTab, setActiveTab] = useState<'order_entry' | 'my_sales'>('order_entry');
+  const [activeTab, setActiveTab] = useState<'order_entry' | 'my_orders' | 'my_sales'>('order_entry');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
@@ -187,8 +187,8 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
     }
   }, [customers]);
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedCustomerId || !selectedProductCode || quantity <= 0) {
       setNotification({ type: 'error', msg: 'Please select a customer and enter a valid quantity' });
       return;
@@ -361,8 +361,8 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         )}
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex space-x-2 border-b border-subtle-divider pb-2">
+      {/* Navigation Tabs (Desktop & Tablet) */}
+      <div className="hidden sm:flex space-x-2 border-b border-subtle-divider pb-2">
         <button
           onClick={() => setActiveTab('order_entry')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
@@ -372,7 +372,19 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
           }`}
         >
           <ShoppingBag className="w-4 h-4" />
-          <span>⚡ Rapid Order Entry</span>
+          <span>New Order</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('my_orders')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'my_orders'
+              ? 'bg-forest-700 text-white shadow-sm'
+              : 'bg-white text-charcoal-700 hover:bg-cream-100 border border-subtle-border'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>My Orders ({orders.length})</span>
         </button>
 
         <button
@@ -384,7 +396,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
           }`}
         >
           <BarChart2 className="w-4 h-4" />
-          <span>📊 My Sales Performance</span>
+          <span>My Sales</span>
         </button>
       </div>
 
@@ -586,12 +598,46 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Recent Orders List */}
+      {/* TAB 2: MY ORDERS */}
+      {activeTab === 'my_orders' && (
+        <div className="space-y-6">
+          {/* Offline Pending Orders Staging Box if any */}
+          {pendingOfflineOrders.length > 0 && (
+            <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center space-x-2">
+                  <CloudOff className="w-4 h-4 text-amber-600" />
+                  <span>Offline Orders Queue ({pendingOfflineOrders.length})</span>
+                </h3>
+                <span className="text-[11px] text-amber-700 font-medium">Stored Locally in IndexedDB</span>
+              </div>
+
+              <div className="space-y-2">
+                {pendingOfflineOrders.map((o, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-charcoal-900">{o.customerName}</span>
+                      <span className="text-charcoal-500 ml-2">
+                        {o.items.map(i => `${i.quantity} pkts of ${i.productName}`).join(', ')}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                      AWAITING SYNC
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Orders List */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-subtle-border">
             <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-4 flex items-center space-x-2">
               <Clock className="w-4 h-4 text-forest-700" />
-              <span>My Recent Route Orders</span>
+              <span>Route Order History ({orders.length})</span>
             </h2>
 
             {orders.length === 0 ? (
@@ -634,7 +680,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         </div>
       )}
 
-      {/* TAB 2: MY SALES PERFORMANCE */}
+      {/* TAB 3: MY SALES PERFORMANCE */}
       {activeTab === 'my_sales' && (
         <div className="space-y-6">
           {loadingSummary ? (
@@ -706,6 +752,59 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
           )}
         </div>
       )}
+
+      {/* Sticky Mobile Bar for Order Entry */}
+      {activeTab === 'order_entry' && (
+        <div className="sm:hidden fixed bottom-14 left-0 right-0 bg-white border-t border-subtle-border p-3 flex items-center justify-between z-20 shadow-lg">
+          <div>
+            <span className="text-[10px] text-charcoal-500 font-semibold uppercase block leading-none">Order Total</span>
+            <span className="text-lg font-black text-forest-800">₹{runningTotal.toLocaleString('en-IN')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handlePlaceOrder()}
+            disabled={isSubmitting}
+            className="px-5 py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center space-x-1.5 disabled:opacity-50"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>{isSubmitting ? 'Recording...' : isOffline ? 'Queue Offline' : 'Submit Order'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Fixed Bottom Navigation Bar */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-subtle-border py-2 px-4 flex items-center justify-around z-30 shadow-lg">
+        <button
+          type="button"
+          onClick={() => setActiveTab('order_entry')}
+          className={`flex flex-col items-center space-y-1 text-[11px] font-bold ${
+            activeTab === 'order_entry' ? 'text-forest-700' : 'text-charcoal-400'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          <span>New Order</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('my_orders')}
+          className={`flex flex-col items-center space-y-1 text-[11px] font-bold ${
+            activeTab === 'my_orders' ? 'text-forest-700' : 'text-charcoal-400'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>My Orders</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('my_sales')}
+          className={`flex flex-col items-center space-y-1 text-[11px] font-bold ${
+            activeTab === 'my_sales' ? 'text-forest-700' : 'text-charcoal-400'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span>My Sales</span>
+        </button>
+      </div>
     </div>
   );
 };

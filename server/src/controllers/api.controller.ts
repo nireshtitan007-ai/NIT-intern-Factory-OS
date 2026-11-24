@@ -1,19 +1,20 @@
 import { Request, Response } from 'express';
-import { 
-  User, 
-  Customer, 
-  Product, 
-  RawMaterial, 
-  BOM, 
-  Purchase, 
-  ProductionRun, 
-  SalesOrder, 
-  Invoice, 
-  Payment, 
-  StockMovement, 
-  AuditLog, 
+import {
+  User,
+  Customer,
+  Product,
+  RawMaterial,
+  BOM,
+  Purchase,
+  ProductionRun,
+  SalesOrder,
+  Invoice,
+  Payment,
+  StockMovement,
+  AuditLog,
   Inquiry,
-  Supplier 
+  Supplier,
+  Settings
 } from '../models';
 import { StockLedgerService } from '../services/stockLedger.service';
 import { PurchaseService } from '../services/purchase.service';
@@ -704,8 +705,8 @@ export class ApiController {
       const user = (req as AuthenticatedRequest).user;
       const { laborCost, overheadCost } = req.body;
       const run = await ProductionService.updateOverheads(
-        req.params.id, 
-        Number(laborCost), 
+        req.params.id,
+        Number(laborCost),
         Number(overheadCost),
         user?.name || user?.username || 'Factory Admin',
         user?.role || 'admin'
@@ -852,8 +853,8 @@ export class ApiController {
       const user = (req as AuthenticatedRequest).user;
       const approverName = user?.name || user?.username || req.body.approverName || 'Factory Admin';
       const result = await SalesOrderService.approveOrder(req.params.id, approverName, user?.role || 'admin');
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         ...result,
         order: result.order ? Serializers.serializeSalesOrder(result.order) : undefined,
         invoice: result.invoice ? Serializers.serializeInvoice(result.invoice) : undefined
@@ -1017,8 +1018,8 @@ export class ApiController {
         receivedBy,
         userRole: user?.role
       });
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         ...result,
         payment: result.payment ? Serializers.serializePayment(result.payment) : undefined,
         invoice: result.invoice ? Serializers.serializeInvoice(result.invoice) : undefined
@@ -1503,9 +1504,9 @@ export class ApiController {
     try {
       const { name, email, phone, company, fleetSize, inquiryType, message } = req.body;
       if (!name || !email || !phone || !company) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Name, email, phone, and company name are required.' 
+        return res.status(400).json({
+          success: false,
+          error: 'Name, email, phone, and company name are required.'
         });
       }
 
@@ -1571,6 +1572,29 @@ export class ApiController {
       res.json({ success: true, inquiry });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  static async getSettings(req: Request, res: Response) {
+    try {
+      const tenantId = (req as any).user?.tenantId || 'default';
+      const settings = await (Settings as any).getSettings(tenantId);
+      res.json({
+        success: true,
+        settings: {
+          legalName: settings.legalName,
+          tradeName: settings.tradeName,
+          address: settings.address,
+          gstin: settings.gstin,
+          stateName: settings.stateName,
+          stateCode: settings.stateCode,
+          bankDetails: settings.bankDetails,
+          invoiceTerms: settings.invoiceTerms,
+          defaultTolerancePercent: settings.defaultTolerancePercent
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }
