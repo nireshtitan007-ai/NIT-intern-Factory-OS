@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../components/Toast';
+import { formatCurrencyRupees, formatDate } from '../utils/formatters';
+import { CopyableBadge } from '../components/CopyableBadge';
+import { TableEmptyState } from '../components/TableEmptyState';
 import { 
   FileSpreadsheet, 
   Download, 
@@ -255,41 +258,46 @@ export const AuditorView: React.FC = () => {
           </div>
 
           {salesRegister.length === 0 ? (
-            <p className="text-xs text-charcoal-500 py-6 text-center">No sales registered in selected period.</p>
+            <TableEmptyState
+              title="No Sales Registered"
+              description="No sales invoices found for the selected date range."
+            />
           ) : (
             <div className="overflow-x-auto border border-subtle-border rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-cream-100 text-charcoal-500 font-semibold uppercase">
+                <thead className="bg-cream-100 text-charcoal-700 font-semibold uppercase sticky top-0 z-10 border-b border-subtle-divider">
                   <tr>
                     <th className="p-3">Invoice No</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Customer</th>
                     <th className="p-3">GSTIN</th>
                     <th className="p-3">Place of Supply</th>
-                    <th className="p-3 text-right">Taxable (₹)</th>
-                    <th className="p-3 text-right">CGST (₹)</th>
-                    <th className="p-3 text-right">SGST (₹)</th>
-                    <th className="p-3 text-right">IGST (₹)</th>
-                    <th className="p-3 text-right font-bold">Total (₹)</th>
-                    <th className="p-3 text-right">Paid (₹)</th>
-                    <th className="p-3 text-right">Balance Due (₹)</th>
+                    <th className="p-3 text-right">Taxable</th>
+                    <th className="p-3 text-right">CGST</th>
+                    <th className="p-3 text-right">SGST</th>
+                    <th className="p-3 text-right">IGST</th>
+                    <th className="p-3 text-right font-bold">Total</th>
+                    <th className="p-3 text-right">Paid</th>
+                    <th className="p-3 text-right">Balance Due</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-subtle-divider">
                   {salesRegister.map((s, idx) => (
                     <tr key={idx} className="hover:bg-cream-50">
-                      <td className="p-3 font-mono font-bold text-forest-700">{s.invoiceNumber}</td>
-                      <td className="p-3 text-charcoal-500">{new Date(s.invoiceDate).toLocaleDateString('en-IN')}</td>
+                      <td className="p-3 font-mono font-bold text-forest-700">
+                        <CopyableBadge text={s.invoiceNumber} className="text-forest-800 bg-forest-50" />
+                      </td>
+                      <td className="p-3 text-charcoal-500">{formatDate(s.invoiceDate)}</td>
                       <td className="p-3 font-medium text-charcoal-900">{s.customerName}</td>
                       <td className="p-3 font-mono text-charcoal-500 text-[11px]">{s.customerGstin || 'Unregistered'}</td>
                       <td className="p-3 text-charcoal-500">{s.placeOfSupply}</td>
-                      <td className="p-3 text-right font-semibold text-charcoal-900">₹{s.taxableValue.toFixed(2)}</td>
-                      <td className="p-3 text-right text-charcoal-500">₹{s.cgstTotal.toFixed(2)}</td>
-                      <td className="p-3 text-right text-charcoal-500">₹{s.sgstTotal.toFixed(2)}</td>
-                      <td className="p-3 text-right text-forest-700 font-medium">₹{s.igstTotal.toFixed(2)}</td>
-                      <td className="p-3 text-right font-bold text-charcoal-900">₹{s.grandTotal.toFixed(2)}</td>
-                      <td className="p-3 text-right text-forest-700 font-bold">₹{s.paidAmount.toFixed(2)}</td>
-                      <td className="p-3 text-right text-red-600 font-bold">₹{s.balanceDue.toFixed(2)}</td>
+                      <td className="p-3 text-right font-semibold text-charcoal-900">{formatCurrencyRupees(s.taxableValue)}</td>
+                      <td className="p-3 text-right text-charcoal-500">{formatCurrencyRupees(s.cgstTotal)}</td>
+                      <td className="p-3 text-right text-charcoal-500">{formatCurrencyRupees(s.sgstTotal)}</td>
+                      <td className="p-3 text-right text-forest-700 font-medium">{formatCurrencyRupees(s.igstTotal)}</td>
+                      <td className="p-3 text-right font-bold text-charcoal-900">{formatCurrencyRupees(s.grandTotal)}</td>
+                      <td className="p-3 text-right text-forest-700 font-bold">{formatCurrencyRupees(s.paidAmount)}</td>
+                      <td className="p-3 text-right text-red-600 font-bold">{formatCurrencyRupees(s.balanceDue)}</td>
                     </tr>
                   ))}
                 </tbody>

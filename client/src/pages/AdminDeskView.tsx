@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { SalesOrder, Invoice, Customer, Product } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../components/Toast';
+import { formatCurrencyRupees, formatDate } from '../utils/formatters';
+import { CopyableBadge } from '../components/CopyableBadge';
+import { TablePagination } from '../components/TablePagination';
+import { TableEmptyState } from '../components/TableEmptyState';
 import { 
   Building2, 
   CheckCircle, 
@@ -29,6 +33,8 @@ export const AdminDeskView: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [invoicePage, setInvoicePage] = useState(1);
+  const invoicePageSize = 10;
 
   // Payment form state
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
@@ -298,8 +304,10 @@ export const AdminDeskView: React.FC = () => {
                           <span className="font-extrabold text-sm text-charcoal-900">{order.customerName}</span>
                           <span className="text-xs text-charcoal-500 font-medium">({order.customerState})</span>
                         </div>
-                        <span className="text-xs text-forest-700 font-semibold">{order.orderNumber}</span>
-                        <span className="text-xs text-charcoal-400 ml-2">by {order.salesmanName}</span>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <CopyableBadge text={order.orderNumber} className="text-xs text-forest-700 bg-forest-50" />
+                          <span className="text-xs text-charcoal-400">by {order.salesmanName}</span>
+                        </div>
                         {order.checkIn?.lat && order.checkIn?.lng && (
                           <div className="text-[11px] text-charcoal-600 flex items-center space-x-1.5 mt-1">
                             <MapPin className="w-3 h-3 text-emerald-600" />
@@ -467,11 +475,14 @@ export const AdminDeskView: React.FC = () => {
         </div>
 
         {invoices.length === 0 ? (
-          <p className="text-xs text-charcoal-400 py-6 text-center">No invoices generated yet.</p>
+          <TableEmptyState
+            title="No Tax Invoices Yet"
+            description="Invoices are automatically generated when submitted orders are approved."
+          />
         ) : (
           <div className="overflow-x-auto border border-subtle-border rounded-xl">
             <table className="w-full text-left text-xs">
-              <thead className="bg-cream-100 text-charcoal-700 font-semibold uppercase">
+              <thead className="bg-cream-100 text-charcoal-700 font-semibold uppercase sticky top-0 z-10 border-b border-subtle-divider">
                 <tr>
                   <th className="p-3">Invoice No</th>
                   <th className="p-3">Customer</th>
@@ -484,22 +495,24 @@ export const AdminDeskView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle-divider">
-                {invoices.map(inv => {
+                {invoices
+                  .slice((invoicePage - 1) * invoicePageSize, invoicePage * invoicePageSize)
+                  .map(inv => {
                   const shareText = `*Tax Invoice ${inv.invoiceNumber}*\nCustomer: ${inv.customerName}\nAmount: ₹${inv.grandTotal.toLocaleString('en-IN')}\nBalance Due: ₹${inv.balanceDue.toLocaleString('en-IN')}\nPay via UPI / NEFT to ZenLyft Manufacturing OS.`;
                   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
                   return (
                     <tr key={inv._id} className="hover:bg-cream-50/80">
                       <td className="p-3 font-extrabold text-forest-700">
-                        <div>{inv.invoiceNumber}</div>
+                        <CopyableBadge text={inv.invoiceNumber} className="text-forest-800 bg-forest-50" />
                         {inv.status === 'CANCELLED' && (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 mt-1">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 mt-1 block w-fit">
                             CANCELLED
                           </span>
                         )}
                         {inv.creditNoteNumber && (
                           <div className="text-[10px] text-amber-700 font-semibold mt-0.5">
-                            CN: {inv.creditNoteNumber}
+                            CN: <CopyableBadge text={inv.creditNoteNumber} className="text-amber-800 bg-amber-50" />
                           </div>
                         )}
                         {inv.irn && (
@@ -608,6 +621,12 @@ export const AdminDeskView: React.FC = () => {
                 })}
               </tbody>
             </table>
+            <TablePagination
+              currentPage={invoicePage}
+              totalItems={invoices.length}
+              pageSize={invoicePageSize}
+              onPageChange={setInvoicePage}
+            />
           </div>
         )}
       </div>

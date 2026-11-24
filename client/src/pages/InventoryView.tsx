@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StockSummaryItem, StockMovement, RawMaterial } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../components/Toast';
+import { formatCurrencyRupees } from '../utils/formatters';
 import { 
   Boxes, 
   Download, 
@@ -328,7 +329,7 @@ export const InventoryView: React.FC = () => {
 
           <div className="overflow-x-auto border border-subtle-border rounded-xl">
             <table className="w-full text-left text-xs">
-              <thead className="bg-cream-100 text-charcoal-500 font-semibold uppercase">
+              <thead className="bg-cream-100 text-charcoal-700 font-semibold uppercase sticky top-0 z-10 border-b border-subtle-divider">
                 <tr>
                   <th className="p-3">Item Name</th>
                   <th className="p-3">Category</th>
@@ -336,8 +337,8 @@ export const InventoryView: React.FC = () => {
                   <th className="p-3 text-right">Receipts</th>
                   <th className="p-3 text-right">Issues/Sales</th>
                   <th className="p-3 text-right">Closing Stock</th>
-                  <th className="p-3 text-right">Rate (₹)</th>
-                  <th className="p-3 text-right">Valuation (₹)</th>
+                  <th className="p-3 text-right">Rate</th>
+                  <th className="p-3 text-right">Valuation</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle-divider">
@@ -368,8 +369,8 @@ export const InventoryView: React.FC = () => {
                       <td className={`p-3 text-right font-bold ${isLow && item.category !== 'FINISHED_GOOD' ? 'text-red-600' : 'text-charcoal-900'}`}>
                         {item.closingStock} {item.unit}
                       </td>
-                      <td className="p-3 text-right text-charcoal-500">₹{(item.rate || 0).toFixed(2)}</td>
-                      <td className="p-3 text-right font-bold text-charcoal-900">₹{(item.stockValue || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-right text-charcoal-500">{formatCurrencyRupees(item.rate || 0)}</td>
+                      <td className="p-3 text-right font-bold text-charcoal-900">{formatCurrencyRupees(item.stockValue || 0)}</td>
                     </tr>
                   );
                 })}

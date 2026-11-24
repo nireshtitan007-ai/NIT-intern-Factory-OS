@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useT } from '../i18n/useT';
 import { useToast } from '../components/Toast';
+import { CopyableBadge } from '../components/CopyableBadge';
+import { formatCurrencyRupees } from '../utils/formatters';
 
 export const ProductionView: React.FC = () => {
   const toast = useToast();
@@ -556,7 +558,7 @@ export const ProductionView: React.FC = () => {
         ) : (
           <div className="overflow-x-auto border border-subtle-border rounded-xl">
             <table className="w-full text-left text-xs">
-              <thead className="bg-cream-100 text-charcoal-500 font-semibold uppercase">
+              <thead className="bg-cream-100 text-charcoal-500 font-semibold uppercase sticky top-0 z-10">
                 <tr>
                   <th className="p-3">{t('production.runNo')}</th>
                   <th className="p-3">{t('production.product')}</th>
@@ -572,7 +574,9 @@ export const ProductionView: React.FC = () => {
               <tbody className="divide-y divide-subtle-divider">
                 {runs.map(run => (
                   <tr key={run._id} className="hover:bg-cream-50">
-                    <td className="p-3 font-mono font-bold text-forest-700">{run.runNumber}</td>
+                    <td className="p-3">
+                      <CopyableBadge text={run.runNumber} />
+                    </td>
                     <td className="p-3 font-medium text-charcoal-900">{run.productName}</td>
                     <td className="p-3 text-charcoal-500">{run.batchExpectedOutput} {t('production.pkts')}</td>
                     <td className="p-3 font-bold text-charcoal-900">{run.actualOutputPackets} {t('production.pkts')}</td>
@@ -592,7 +596,7 @@ export const ProductionView: React.FC = () => {
                         </div>
                       ))}
                     </td>
-                    <td className="p-3 font-bold text-forest-700">₹{run.costPerPacket.toFixed(2)}</td>
+                    <td className="p-3 font-bold text-forest-700">{formatCurrencyRupees(run.costPerPacket)}</td>
                     <td className="p-3 text-center">
                       <button
                         onClick={() => {
