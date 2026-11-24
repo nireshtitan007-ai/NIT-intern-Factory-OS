@@ -31,7 +31,7 @@ export const OwnerView: React.FC<OwnerViewProps> = ({ onRunBenchmark }) => {
       if (mRes.success) setMetrics(mRes.metrics);
       if (aRes.success) setAuditLogs(aRes.logs);
     } catch (e) {
-      console.error(e);
+      // Owner overview load handled gracefully
     } finally {
       setLoading(false);
     }

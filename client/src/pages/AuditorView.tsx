@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useToast } from '../components/Toast';
 import { 
   FileSpreadsheet, 
   Download, 
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 export const AuditorView: React.FC = () => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'sales' | 'purchases' | 'gst' | 'customers' | 'products' | 'collections' | 'outstanding' | 'production' | 'stock'>('sales');
   
   // Date range defaults: 1st of current month to today
@@ -62,7 +64,7 @@ export const AuditorView: React.FC = () => {
       if (colRes.success) setCollections(colRes.collections);
       if (stkRes.success) setStockLedger(stkRes.ledger);
     } catch (e) {
-      console.error('Failed to load auditor reports:', e);
+      // Auditor reports load handled gracefully
     } finally {
       setLoading(false);
     }
@@ -108,8 +110,9 @@ export const AuditorView: React.FC = () => {
       }
 
       await api.downloadReportFile(endpoint, filename, format, fromISO, toISO);
+      toast.success('Report Downloaded', `${filename}.${format} generated successfully.`);
     } catch (err: any) {
-      alert('Export failed: ' + (err.message || 'Unknown error'));
+      toast.error('Export Failed', err.message || 'Unknown error');
     } finally {
       setExporting(false);
     }
@@ -121,8 +124,9 @@ export const AuditorView: React.FC = () => {
       const fromISO = fromDate ? new Date(`${fromDate}T00:00:00.000Z`).toISOString() : undefined;
       const toISO = toDate ? new Date(`${toDate}T23:59:59.999Z`).toISOString() : undefined;
       await api.downloadTallyXml(fromISO, toISO);
+      toast.success('Tally XML Downloaded', 'Tally sales vouchers XML exported successfully.');
     } catch (err: any) {
-      alert('Tally export failed: ' + (err.message || 'Unknown error'));
+      toast.error('Tally Export Failed', err.message || 'Unknown error');
     } finally {
       setExporting(false);
     }

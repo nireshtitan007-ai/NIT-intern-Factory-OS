@@ -3,6 +3,7 @@ import { UserRole, AppUser } from './types';
 import { Navbar } from './components/Navbar';
 import { BenchmarkModal } from './components/BenchmarkModal';
 import { LoginView } from './pages/LoginView';
+import { useToast } from './components/Toast';
 import { AdminControlCenterView } from './pages/AdminControlCenterView';
 import { SalesmanView } from './pages/SalesmanView';
 import { ProductionView } from './pages/ProductionView';
@@ -132,7 +133,7 @@ export const App: React.FC = () => {
         }
       };
     } catch (e) {
-      console.warn('Realtime SSE connection failed:', e);
+      // SSE connection silently handled
     }
 
     return () => {
@@ -177,6 +178,8 @@ export const App: React.FC = () => {
     navigate('/');
   };
 
+  const toast = useToast();
+
   const handleRunBenchmark = async () => {
     setIsProcessing(true);
     try {
@@ -184,7 +187,7 @@ export const App: React.FC = () => {
       setBenchmarkResult(res);
       setIsModalOpen(true);
     } catch (e: any) {
-      alert('Error running benchmark: ' + e.message);
+      toast.error('Error running benchmark', e.message);
     } finally {
       setIsProcessing(false);
     }
@@ -194,10 +197,10 @@ export const App: React.FC = () => {
     setIsProcessing(true);
     try {
       await api.seedBenchmark();
-      alert('Section 5 Benchmark Master Data seeded successfully.');
-      window.location.reload();
+      toast.success('Benchmark Seeded', 'Section 5 Benchmark Master Data seeded successfully.');
+      setTimeout(() => window.location.reload(), 1000);
     } catch (e: any) {
-      alert('Error seeding data: ' + e.message);
+      toast.error('Error seeding data', e.message);
     } finally {
       setIsProcessing(false);
     }

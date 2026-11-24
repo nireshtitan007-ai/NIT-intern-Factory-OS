@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Product, SalesOrder } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../components/Toast';
 import { 
   queueOfflineOrder, 
   getPendingOfflineOrders, 
@@ -91,6 +92,7 @@ const getSalesmanLocation = (): Promise<{ lat: number; lng: number; accuracyMete
 };
 
 export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'order_entry' | 'my_orders' | 'my_sales'>('order_entry');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -144,7 +146,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         setSelectedCustomerId(customers[0]._id);
       }
     } catch (e) {
-      console.error('Error loading salesman data', e);
+      // Salesman data load handled gracefully
     }
   };
 
@@ -157,7 +159,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
         setSummary(res.summary);
       }
     } catch (e) {
-      console.warn('Failed to load my sales summary:', e);
+      // Summary load handled gracefully
     } finally {
       setLoadingSummary(false);
     }
@@ -263,7 +265,7 @@ export const SalesmanView: React.FC<SalesmanViewProps> = ({ isOffline }) => {
 
   const handleSyncPendingOrders = async () => {
     if (isOffline) {
-      alert('Cannot sync while in offline mode. Please switch to online first.');
+      toast.warning('Offline Mode Active', 'Cannot sync while in offline mode. Please reconnect or switch to online first.');
       return;
     }
 

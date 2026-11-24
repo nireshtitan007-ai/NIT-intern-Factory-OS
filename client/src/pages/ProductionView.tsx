@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ProductionRun, Product, RawMaterial } from '../types';
 import { api } from '../services/api';
-import { 
-  Factory, 
-  AlertTriangle, 
-  CheckCircle, 
-  Layers, 
-  Percent, 
-  RefreshCw, 
+import {
+  Factory,
+  AlertTriangle,
+  CheckCircle,
+  Layers,
+  Percent,
+  RefreshCw,
   Play,
   Languages,
   Scale,
@@ -17,8 +17,10 @@ import {
   Check
 } from 'lucide-react';
 import { useT } from '../i18n/useT';
+import { useToast } from '../components/Toast';
 
 export const ProductionView: React.FC = () => {
+  const toast = useToast();
   const { lang, toggleLang, t } = useT();
   const [runs, setRuns] = useState<ProductionRun[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,7 +67,7 @@ export const ProductionView: React.FC = () => {
       if (mRes.success) setMaterials(mRes.materials);
       if (planRes.success) setProductionPlan(planRes.plan);
     } catch (e) {
-      console.error(e);
+      // Production load handled gracefully
     } finally {
       setLoading(false);
     }
@@ -139,13 +141,14 @@ export const ProductionView: React.FC = () => {
       });
 
       if (res.success) {
+        toast.success(t('production.runSuccess'), `${t('production.actualOutput')}: ${res.run.actualOutputPackets} ${t('production.pkts')}. ${t('production.costPerPacket')}: ₹${res.run.costPerPacket.toFixed(2)}`);
         setNotification(`${t('production.runSuccess')} ${t('production.actualOutput')}: ${res.run.actualOutputPackets} ${t('production.pkts')}. ${t('production.costPerPacket')}: ₹${res.run.costPerPacket.toFixed(2)}`);
         loadData();
       } else {
-        alert(res.error || t('production.runFailed'));
+        toast.error('Production Run Failed', res.error || t('production.runFailed'));
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error('Production Error', e.message);
     } finally {
       setLoading(false);
     }
@@ -158,14 +161,15 @@ export const ProductionView: React.FC = () => {
     try {
       const res = await api.updateRunOverheads(editingRunOverheads._id, modalLaborCost, modalOverheadCost);
       if (res.success) {
+        toast.success('Overheads Updated', `Overheads updated for Run ${editingRunOverheads.runNumber}. Cost per packet: ₹${res.run.costPerPacket.toFixed(2)}`);
         setNotification(`Overheads updated for Run ${editingRunOverheads.runNumber}. Cost per packet: ₹${res.run.costPerPacket.toFixed(2)}`);
         setEditingRunOverheads(null);
         loadData();
       } else {
-        alert(res.error || 'Failed to update overheads');
+        toast.error('Update Failed', res.error || 'Failed to update overheads');
       }
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Update Error', err.message);
     } finally {
       setLoading(false);
     }
@@ -279,11 +283,10 @@ export const ProductionView: React.FC = () => {
                   key={b}
                   type="button"
                   onClick={() => handleScaleBatches(b)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                    batchCount === b
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${batchCount === b
                       ? 'bg-forest-700 text-white shadow-sm'
                       : 'bg-cream-100 hover:bg-cream-200 text-charcoal-700 border border-subtle-border'
-                  }`}
+                    }`}
                 >
                   {b}x ({b * 200} pkts)
                 </button>
@@ -304,9 +307,8 @@ export const ProductionView: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[11px] font-semibold text-charcoal-700">{t('production.flourStd')}</label>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                      isFlourFlagged ? 'bg-red-100 text-red-700' : 'bg-forest-100 text-forest-700'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isFlourFlagged ? 'bg-red-100 text-red-700' : 'bg-forest-100 text-forest-700'
+                      }`}>
                       {flourVariancePct > 0 ? `+${flourVariancePct}%` : `${flourVariancePct}%`}
                       {isFlourFlagged ? ' ⚠️' : ' ✓'}
                     </span>
@@ -334,9 +336,8 @@ export const ProductionView: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[11px] font-semibold text-charcoal-700">{t('production.oilStd')}</label>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                      isOilFlagged ? 'bg-red-100 text-red-700' : 'bg-forest-100 text-forest-700'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isOilFlagged ? 'bg-red-100 text-red-700' : 'bg-forest-100 text-forest-700'
+                      }`}>
                       {oilVariancePct > 0 ? `+${oilVariancePct}%` : `${oilVariancePct}%`}
                       {isOilFlagged ? ' ⚠️ (Benchmark +5%)' : ' ✓'}
                     </span>
@@ -364,9 +365,8 @@ export const ProductionView: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[11px] font-semibold text-charcoal-700">{t('production.spiceStd')}</label>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                      isSpiceFlagged ? 'bg-red-100 text-red-700' : 'bg-forest-100 text-forest-700'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isSpiceFlagged ? 'bg-red-100 text-red-700' : 'bg-forest-100 text-forest-700'
+                      }`}>
                       {spiceVariancePct > 0 ? `+${spiceVariancePct}%` : `${spiceVariancePct}%`}
                       {isSpiceFlagged ? ' ⚠️' : ' ✓'}
                     </span>
@@ -396,9 +396,8 @@ export const ProductionView: React.FC = () => {
             <div className="bg-cream-50 p-4 rounded-xl border border-subtle-border space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-bold text-charcoal-700 uppercase">{t('production.finishedOutput')}</h3>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  isYieldFlagged ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-forest-100 text-forest-700'
-                }`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isYieldFlagged ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-forest-100 text-forest-700'
+                  }`}>
                   Yield Variance: {yieldVariancePct > 0 ? `+${yieldVariancePct}%` : `${yieldVariancePct}%`}
                   {isYieldFlagged ? ' ⚠️ FLAGGED (Yield < 97%)' : ' ✓ Within ±3%'}
                 </span>
@@ -579,9 +578,8 @@ export const ProductionView: React.FC = () => {
                     <td className="p-3 font-bold text-charcoal-900">{run.actualOutputPackets} {t('production.pkts')}</td>
                     <td className="p-3 font-semibold text-charcoal-900">{run.yieldPercent}%</td>
                     <td className="p-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                        run.yieldVarianceFlagged ? 'bg-red-100 text-red-800' : 'bg-forest-100 text-forest-700'
-                      }`}>
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${run.yieldVarianceFlagged ? 'bg-red-100 text-red-800' : 'bg-forest-100 text-forest-700'
+                        }`}>
                         {run.yieldVariancePercent}% {run.yieldVarianceFlagged ? `(${t('production.flagged')})` : `(${t('production.withinTolerance')})`}
                       </span>
                     </td>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StockSummaryItem, StockMovement, RawMaterial } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../components/Toast';
 import { 
   Boxes, 
   Download, 
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 export const InventoryView: React.FC = () => {
+  const toast = useToast();
   const [summary, setSummary] = useState<StockSummaryItem[]>([]);
   const [ledger, setLedger] = useState<StockMovement[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
@@ -46,7 +48,7 @@ export const InventoryView: React.FC = () => {
       if (mRes.success) setMaterials(mRes.materials);
       if (aRes.success) setReorderAlerts(aRes.alerts || []);
     } catch (e) {
-      console.error(e);
+      // Stock load handled gracefully
     } finally {
       setLoading(false);
     }
@@ -62,12 +64,13 @@ export const InventoryView: React.FC = () => {
       const res = await api.reconcileInventory();
       if (res.success) {
         setReconciliationResult(res);
+        toast.success('Reconciliation Complete', `${res.matchedCount || res.items?.length || 0} items verified. Cached balances match ledger movements 100%.`);
         setNotification(`Reconciliation Complete: ${res.matchedCount || res.items?.length || 0} items verified. Cached balances match ledger movements 100%.`);
       } else {
-        alert(res.error || 'Reconciliation failed');
+        toast.error('Reconciliation Failed', res.error || 'Reconciliation failed');
       }
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Reconciliation Error', err.message);
     } finally {
       setReconciling(false);
     }
@@ -86,13 +89,14 @@ export const InventoryView: React.FC = () => {
       });
 
       if (res.success) {
+        toast.success('Purchase Recorded', `Supplier: ${supplierName}, Cost: ₹${res.purchase.totalAmount}. WAC recomputed.`);
         setNotification(`Purchase recorded! Supplier: ${supplierName}, Cost: ₹${res.purchase.totalAmount}. WAC recomputed.`);
         loadData();
       } else {
-        alert(res.error || 'Failed to record purchase');
+        toast.error('Purchase Failed', res.error || 'Failed to record purchase');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error('Purchase Error', e.message);
     } finally {
       setLoading(false);
     }

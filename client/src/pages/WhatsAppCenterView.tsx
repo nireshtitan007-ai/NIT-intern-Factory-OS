@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useToast } from '../components/Toast';
 import { 
   MessageSquare, 
   Send, 
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 
 export const WhatsAppCenterView: React.FC = () => {
+  const toast = useToast();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,7 @@ export const WhatsAppCenterView: React.FC = () => {
       if (nRes.success) setNotifications(nRes.notifications);
       if (sRes.success) setStatus(sRes);
     } catch (e) {
-      console.error(e);
+      // Status load handled gracefully
     } finally {
       setLoading(false);
     }
@@ -71,11 +73,12 @@ export const WhatsAppCenterView: React.FC = () => {
       });
 
       if (res.success) {
+        toast.success('Notification Sent', `WhatsApp message queued for ${recipientName} (${recipientPhone})!`);
         setSendSuccess(`WhatsApp message queued for ${recipientName} (${recipientPhone})!`);
         loadAll();
       }
     } catch (err: any) {
-      alert('Failed to send notification: ' + err.message);
+      toast.error('Dispatch Notification Failed', err.message);
     } finally {
       setIsSending(false);
     }

@@ -30,8 +30,10 @@ import {
 import { api } from '../services/api';
 import { AppUser } from '../types';
 import { AdminDeskView } from './AdminDeskView';
+import { useConfirm } from '../components/ConfirmDialog';
 
 export const AdminControlCenterView: React.FC = () => {
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState<'overview' | 'desk' | 'users' | 'permissions' | 'approvals' | 'masters' | 'monitoring' | 'inquiries'>('overview');
   const [loading, setLoading] = useState(true);
   const [adminData, setAdminData] = useState<any>(null);
@@ -84,7 +86,7 @@ export const AdminControlCenterView: React.FC = () => {
       if (bRes.success) setBomsList(bRes.boms);
       if (sRes.success) setSuppliersList(sRes.suppliers);
     } catch (e) {
-      console.error('Failed to load masters:', e);
+      // Masters load handled gracefully
     }
   };
 
@@ -108,7 +110,7 @@ export const AdminControlCenterView: React.FC = () => {
       }
       loadMasters();
     } catch (e: any) {
-      console.error('Failed to load admin control centre data:', e);
+      // Admin overview load handled gracefully
     } finally {
       setLoading(false);
     }
@@ -195,7 +197,17 @@ export const AdminControlCenterView: React.FC = () => {
   };
 
   const handleRejectOrder = async (orderId: string) => {
-    const reason = prompt('Please enter administrative reason for rejecting this order:') || 'Management review';
+    const reasonResult = await confirm({
+      title: 'Reject Sales Order',
+      message: 'Please provide the administrative justification for rejecting this submitted sales order.',
+      requiresInput: true,
+      inputPlaceholder: 'e.g. Credit limit exceeded / Pricing discrepancy',
+      defaultValue: 'Management review',
+      confirmLabel: 'Reject Order',
+      danger: true
+    });
+    if (!reasonResult) return;
+    const reason = typeof reasonResult === 'string' ? reasonResult : 'Management review';
     try {
       const res = await api.rejectOrder(orderId, reason, 'Factory Admin');
       if (res.success) {

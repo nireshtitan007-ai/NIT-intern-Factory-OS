@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SalesOrder, Invoice, Customer, Product } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../components/Toast';
 import { 
   Building2, 
   CheckCircle, 
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export const AdminDeskView: React.FC = () => {
+  const toast = useToast();
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -64,7 +66,7 @@ export const AdminDeskView: React.FC = () => {
       if (cRes.success) setCustomers(cRes.customers);
       if (pRes.success) setProducts(pRes.products);
     } catch (e) {
-      console.error(e);
+      // Load handled silently
     } finally {
       setLoading(false);
     }
@@ -79,13 +81,14 @@ export const AdminDeskView: React.FC = () => {
     try {
       const res = await api.approveOrder(orderId, 'Factory Admin');
       if (res.success) {
+        toast.success('Order Approved', `GST Invoice ${res.invoice.invoiceNumber} raised successfully.`);
         setNotification(`Order approved! GST Invoice ${res.invoice.invoiceNumber} raised successfully.`);
         loadAll();
       } else {
-        alert(res.error || 'Failed to approve order');
+        toast.error('Approval Failed', res.error || 'Failed to approve order');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error('Approval Error', e.message);
     } finally {
       setLoading(false);
     }
@@ -110,14 +113,15 @@ export const AdminDeskView: React.FC = () => {
     try {
       const res = await api.editOrder(editingOrder._id, { items: editItems });
       if (res.success) {
+        toast.success('Order Updated', `Order ${editingOrder.orderNumber} updated successfully!`);
         setNotification(`Order ${editingOrder.orderNumber} updated successfully!`);
         setEditingOrder(null);
         loadAll();
       } else {
-        alert(res.error || 'Failed to update order');
+        toast.error('Update Failed', res.error || 'Failed to update order');
       }
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Update Error', err.message);
     } finally {
       setLoading(false);
     }
@@ -139,14 +143,15 @@ export const AdminDeskView: React.FC = () => {
     try {
       const res = await api.dispatchOrderWithItems(dispatchingInvoice._id, dispatchItems, 'Factory Admin');
       if (res.success) {
+        toast.success('Dispatch Recorded', `Finished goods stock deducted for Invoice ${res.invoice.invoiceNumber}.`);
         setNotification(`Dispatch recorded for Invoice ${res.invoice.invoiceNumber}. Finished goods stock deducted!`);
         setDispatchingInvoice(null);
         loadAll();
       } else {
-        alert(res.error || 'Failed to dispatch');
+        toast.error('Dispatch Failed', res.error || 'Failed to dispatch');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error('Dispatch Error', e.message);
     } finally {
       setLoading(false);
     }
@@ -165,14 +170,15 @@ export const AdminDeskView: React.FC = () => {
     try {
       const res = await api.cancelInvoice(cancellingInvoice._id, cancelReason);
       if (res.success) {
+        toast.success('Invoice Cancelled', `Invoice ${cancellingInvoice.invoiceNumber} cancelled. Credit Note ${res.creditNote?.creditNoteNumber || 'generated'} issued.`);
         setNotification(`Invoice ${cancellingInvoice.invoiceNumber} cancelled. Credit Note ${res.creditNote?.creditNoteNumber || 'generated'} issued.`);
         setCancellingInvoice(null);
         loadAll();
       } else {
-        alert(res.error || 'Failed to cancel invoice');
+        toast.error('Cancellation Failed', res.error || 'Failed to cancel invoice');
       }
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Cancellation Error', err.message);
     } finally {
       setLoading(false);
     }
@@ -216,13 +222,14 @@ export const AdminDeskView: React.FC = () => {
     try {
       const res = await api.generateMockEInvoice(invoiceId);
       if (res.success) {
+        toast.success('Mock e-Invoice Generated', 'Mock e-Invoice IRN and signed QR code created.');
         setNotification('Mock e-Invoice IRN successfully generated.');
         loadAll();
       } else {
-        alert('Failed to generate mock e-Invoice: ' + (res.error || 'Unknown error'));
+        toast.error('e-Invoice Failed', res.error || 'Failed to generate mock e-Invoice');
       }
     } catch (err: any) {
-      alert('Error generating mock e-Invoice: ' + err.message);
+      toast.error('e-Invoice Error', err.message);
     } finally {
       setLoading(false);
     }
