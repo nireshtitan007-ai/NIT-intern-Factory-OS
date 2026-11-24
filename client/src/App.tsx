@@ -304,6 +304,18 @@ export const App: React.FC = () => {
         )}
       </main>
 
+      {/* Persistent Enterprise Footer */}
+      <footer className="bg-white border-t border-subtle-border py-3 px-6 text-center text-[11px] text-charcoal-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="flex items-center space-x-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+          <span className="font-semibold text-charcoal-600">ZenLyft Manufacturing OS</span>
+          <span>v1.0.0 • Enterprise Edition</span>
+        </div>
+        <div className="text-charcoal-400 text-[11px]">
+          Order-to-Audit Factory Operating System • Tamil Nadu Food Processing Cluster
+        </div>
+      </footer>
+
       {/* Benchmark Results Modal */}
       <BenchmarkModal
         isOpen={isModalOpen}
