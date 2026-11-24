@@ -80,7 +80,7 @@ cd "NIT-intern-Factory-OS"
 # 2. Server setup (Node 18+ required)
 cd server
 npm install
-npm test            # Runs all 14 comprehensive test suites (130+ tests)
+npm test            # Runs all 15 comprehensive test suites (137 tests)
 npm run benchmark   # Executes the Section 5 NIT Trichy Benchmark Scenario
 
 # 3. Start Backend API Server
@@ -92,6 +92,15 @@ npm install
 npm run build       # Verifies TypeScript compilation and PWA service worker
 npm run dev         # Starts frontend at http://localhost:5173
 ```
+
+#### Evaluation & Commercial Mode Configuration (`VITE_SHOW_EVAL_TOOLS`)
+The frontend client includes a configurable environment flag in `client/.env`:
+```ini
+# client/.env
+VITE_SHOW_EVAL_TOOLS=true
+```
+- **When set to `true` (Evaluation Mode):** Evaluators can quickly select demo roles via a collapsed `<details><summary>Evaluation access</summary></details>` tray on the login page. When logged in as `factory_admin`, evaluators can trigger "Run NIT Benchmark" and "Reset Demo Data" directly from the user profile avatar dropdown in the commercial top navigation bar.
+- **When set to `false` (Pristine Commercial Mode):** All evaluation credentials, benchmark modals, and reset buttons are completely hidden from the UI, presenting an uncompromising enterprise production product.
 
 ### Option B: Docker Compose Setup (Single Command Boot)
 
