@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Lock, 
-  User, 
-  MapPin, 
-  ArrowRight, 
-  AlertCircle, 
+import {
+  Lock,
+  User,
+  MapPin,
+  ArrowRight,
+  AlertCircle,
   ShieldCheck,
   Building2,
   Users,
-  Compass
+  Compass,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
@@ -24,11 +26,14 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
   onSwitchToAdmin,
   onSwitchToStaff
 }) => {
-  const [username, setUsername] = useState('salesman_a');
-  const [password, setPassword] = useState('ZenLyft@123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [territory, setTerritory] = useState('Tamil Nadu Field');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const showEvalTools = import.meta.env.VITE_SHOW_EVAL_TOOLS === 'true';
 
   const handleQuickSelect = (u: string, t: string) => {
     setUsername(u);
@@ -113,7 +118,7 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. salesman_a"
+                  placeholder="Enter salesman username"
                   className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
               </div>
@@ -128,13 +133,20 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
+                  placeholder="Enter password"
+                  className="w-full pl-9 pr-10 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-charcoal-400 hover:text-charcoal-700"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -169,44 +181,44 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
             </button>
           </form>
 
-          {/* Quick Select for Field Testing */}
-          <div className="mt-6 pt-5 border-t border-subtle-divider">
-            <span className="text-[11px] font-semibold text-charcoal-500 block mb-2 text-center">
-              Quick 1-Tap Authorized Field Accounts
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickSelect('salesman_a', 'Tamil Nadu Field')}
-                className={`p-2.5 rounded-lg border text-left transition ${
-                  username === 'salesman_a' 
-                    ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
-                    : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
-                }`}
-              >
-                <div className="text-xs font-semibold">Salesman A</div>
-                <div className="text-[10px] text-charcoal-500">Tamil Nadu Route</div>
-              </button>
+          {/* Quick Select for Evaluation / Field Testing */}
+          {showEvalTools && (
+            <details className="mt-6 pt-4 border-t border-subtle-divider text-xs text-charcoal-500">
+              <summary className="cursor-pointer font-semibold text-charcoal-600 hover:text-charcoal-900 text-center select-none">
+                Evaluation Access (Preconfigured Sales Accounts)
+              </summary>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => handleQuickSelect('salesman_a', 'Tamil Nadu Field')}
+                  className={`p-2.5 rounded-lg border text-left transition ${username === 'salesman_a'
+                      ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold'
+                      : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
+                    }`}
+                >
+                  <div className="text-xs font-semibold">Salesman A</div>
+                  <div className="text-[10px] text-charcoal-500">Tamil Nadu Route</div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleQuickSelect('salesman_b', 'Tiruchirappalli North')}
-                className={`p-2.5 rounded-lg border text-left transition ${
-                  username === 'salesman_b' 
-                    ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
-                    : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
-                }`}
-              >
-                <div className="text-xs font-semibold">Salesman B</div>
-                <div className="text-[10px] text-charcoal-500">Trichy Wholesale</div>
-              </button>
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => handleQuickSelect('salesman_b', 'Tiruchirappalli North')}
+                  className={`p-2.5 rounded-lg border text-left transition ${username === 'salesman_b'
+                      ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold'
+                      : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
+                    }`}
+                >
+                  <div className="text-xs font-semibold">Salesman B</div>
+                  <div className="text-[10px] text-charcoal-500">Trichy Wholesale</div>
+                </button>
+              </div>
+            </details>
+          )}
         </div>
 
         {/* Portal Switchers */}
         <div className="mt-4 flex items-center justify-center space-x-4 text-xs font-semibold text-charcoal-500">
-          <button 
+          <button
             onClick={onSwitchToAdmin}
             className="hover:text-forest-700 transition flex items-center space-x-1"
           >
@@ -214,7 +226,7 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
             <span>Admin Control Centre</span>
           </button>
           <span>•</span>
-          <button 
+          <button
             onClick={onSwitchToStaff}
             className="hover:text-forest-700 transition flex items-center space-x-1"
           >
@@ -226,7 +238,7 @@ export const SalesmanMobileLoginView: React.FC<SalesmanMobileLoginViewProps> = (
 
       {/* Footer Info */}
       <footer className="max-w-md w-full mx-auto text-center py-2 text-[11px] text-charcoal-500">
-        IndexedDB Offline Synchronization Active • Strict Data Isolation
+        ZenLyft Manufacturing OS v1.0.0 • Field Terminal
       </footer>
     </div>
   );

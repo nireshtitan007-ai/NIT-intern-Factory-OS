@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 interface OwnerViewProps {
-  onRunBenchmark: () => void;
+  onRunBenchmark?: () => void;
 }
 
 export const OwnerView: React.FC<OwnerViewProps> = ({ onRunBenchmark }) => {
@@ -52,14 +52,6 @@ export const OwnerView: React.FC<OwnerViewProps> = ({ onRunBenchmark }) => {
             Live overview of sales turnover, double-entry inventory valuation, production variance, and customer credit exposure.
           </p>
         </div>
-
-        <button
-          onClick={onRunBenchmark}
-          className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-2xl text-xs font-extrabold shadow-lg shadow-indigo-600/30 transition flex-shrink-0"
-        >
-          <ShieldCheck className="w-4 h-4" />
-          <span>Verify NIT Benchmark Live</span>
-        </button>
       </div>
 
       {/* KPI Cards Grid */}

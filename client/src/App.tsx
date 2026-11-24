@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { UserRole, AppUser } from './types';
 import { Navbar } from './components/Navbar';
 import { BenchmarkModal } from './components/BenchmarkModal';
-import { PitchDeckModal } from './components/PitchDeckModal';
 import { LoginView } from './pages/LoginView';
 import { AdminControlCenterView } from './pages/AdminControlCenterView';
 import { SalesmanView } from './pages/SalesmanView';
@@ -53,16 +52,12 @@ export const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [benchmarkResult, setBenchmarkResult] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPitchOpen, setIsPitchOpen] = useState(false);
   const [liveToast, setLiveToast] = useState<{ type: string; title: string; desc: string } | null>(null);
 
   // Router navigation helper
   const navigate = (path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/pitch') {
-      setIsPitchOpen(true);
-    }
     window.scrollTo(0, 0);
   };
 
@@ -71,9 +66,6 @@ export const App: React.FC = () => {
     const handlePopState = () => {
       const path = window.location.pathname || '/';
       setCurrentPath(path);
-      if (path === '/pitch') {
-        setIsPitchOpen(true);
-      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -194,54 +186,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleDirectDemoLogin = async (targetRole: 'admin' | 'salesman' | 'production' | 'accountant' | 'auditor') => {
-    setIsPitchOpen(false);
-    setIsProcessing(true);
-    try {
-      let username = 'factory_admin';
-      let password = 'Admin@123';
-      let endpoint = '/api/auth/admin-login';
-
-      if (targetRole === 'salesman') {
-        username = 'salesman_a';
-        password = 'ZenLyft@123';
-        endpoint = '/api/auth/salesman-mobile-login';
-      } else if (targetRole === 'production') {
-        username = 'supervisor';
-        password = 'ZenLyft@123';
-        endpoint = '/api/auth/login';
-      } else if (targetRole === 'accountant') {
-        username = 'accountant';
-        password = 'ZenLyft@123';
-        endpoint = '/api/auth/login';
-      } else if (targetRole === 'auditor') {
-        username = 'auditor';
-        password = 'ZenLyft@123';
-        endpoint = '/api/auth/login';
-      }
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (data.success && data.token) {
-        localStorage.setItem('zenlyft_auth_token', data.token);
-        localStorage.setItem('zenlyft_token', data.token);
-        localStorage.setItem('zenlyft_user', JSON.stringify(data.user));
-        handleLoginSuccess(data.user, data.token);
-      } else {
-        alert('Demo login failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch (err: any) {
-      alert('Demo login network error: ' + err.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // 1. Unauthenticated Gateway: Direct Clean Enterprise Login (No Marketing Page)
+  // 1. Unauthenticated Gateway: Direct Clean Enterprise Login
   if (!currentUser) {
     const params = new URLSearchParams(window.location.search);
     const initialMode = params.get('mode') === 'salesman' ? 'salesman' :
@@ -251,26 +196,11 @@ export const App: React.FC = () => {
         <LoginView 
           onLoginSuccess={handleLoginSuccess}
           initialMode={initialMode}
-          onOpenBenchmark={handleRunBenchmark}
-          onOpenPitch={() => setIsPitchOpen(true)}
         />
         <BenchmarkModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           result={benchmarkResult}
-        />
-        <PitchDeckModal
-          isOpen={isPitchOpen}
-          onClose={() => setIsPitchOpen(false)}
-          onRunBenchmark={handleRunBenchmark}
-          onDirectLogin={handleDirectDemoLogin}
-          onSelectRole={(role) => {
-            if (role === 'admin') navigate('/admin');
-            else if (role === 'salesman') navigate('/app/sales-terminal');
-            else if (role === 'production') navigate('/app/production');
-            else if (role === 'accountant') navigate('/app/inventory');
-            else if (role === 'owner') navigate('/app/reports');
-          }}
         />
       </div>
     );
@@ -297,7 +227,6 @@ export const App: React.FC = () => {
         onToggleOffline={() => setIsOffline(!isOffline)}
         onRunBenchmark={handleRunBenchmark}
         onSeedData={handleSeedData}
-        onOpenPitch={() => setIsPitchOpen(true)}
         isProcessing={isProcessing}
         currentUser={currentUser}
         onLogout={handleLogout}
@@ -346,21 +275,6 @@ export const App: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         result={benchmarkResult}
-      />
-
-      {/* Pitch Deck & Demo Walkthrough Modal */}
-      <PitchDeckModal
-        isOpen={isPitchOpen}
-        onClose={() => setIsPitchOpen(false)}
-        onRunBenchmark={handleRunBenchmark}
-        onDirectLogin={handleDirectDemoLogin}
-        onSelectRole={(role) => {
-          if (role === 'admin') navigate('/admin');
-          else if (role === 'salesman') navigate('/app/sales-terminal');
-          else if (role === 'production') navigate('/app/production');
-          else if (role === 'accountant') navigate('/app/inventory');
-          else if (role === 'owner') navigate('/app/reports');
-        }}
       />
     </div>
   );

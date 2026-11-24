@@ -8,8 +8,8 @@ import {
   Building2, 
   Users, 
   Compass,
-  Play,
-  Target
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AppUser } from '../types';
@@ -18,21 +18,20 @@ import { SalesmanMobileLoginView } from './SalesmanMobileLoginView';
 interface LoginViewProps {
   onLoginSuccess: (user: AppUser, token: string) => void;
   initialMode?: 'salesman' | 'admin' | 'staff';
-  onOpenBenchmark?: () => void;
-  onOpenPitch?: () => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ 
   onLoginSuccess, 
-  initialMode = 'admin',
-  onOpenBenchmark,
-  onOpenPitch
+  initialMode = 'admin'
 }) => {
   const [loginMode, setLoginMode] = useState<'salesman' | 'admin' | 'staff'>(initialMode);
-  const [username, setUsername] = useState('factory_admin');
-  const [password, setPassword] = useState('ZenLyft@123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const showEvalTools = import.meta.env.VITE_SHOW_EVAL_TOOLS === 'true';
 
   // If salesman mode is selected, render the dedicated Salesman Mobile Login
   if (loginMode === 'salesman') {
@@ -41,14 +40,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
         onLoginSuccess={onLoginSuccess}
         onSwitchToAdmin={() => {
           setLoginMode('admin');
-          setUsername('factory_admin');
-          setPassword('ZenLyft@123');
+          setUsername('');
+          setPassword('');
           setError(null);
         }}
         onSwitchToStaff={() => {
           setLoginMode('staff');
-          setUsername('supervisor');
-          setPassword('ZenLyft@123');
+          setUsername('');
+          setPassword('');
           setError(null);
         }}
       />
@@ -56,7 +55,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   }
 
   const demoAccounts = [
-    { username: 'factory_admin', pass: 'ZenLyft@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive Oversight' },
+    { username: 'factory_admin', pass: 'Admin@123', label: 'Factory Admin Desk', role: 'admin', type: 'admin', dept: 'Executive Oversight' },
     { username: 'owner', pass: 'ZenLyft@123', label: 'Business Owner', role: 'owner', type: 'admin', dept: 'Board & Profitability' },
     { username: 'supervisor', pass: 'ZenLyft@123', label: 'Production Supervisor', role: 'production', type: 'staff', dept: 'Floor & BOM' },
     { username: 'inventory_mgr', pass: 'ZenLyft@123', label: 'Inventory Manager', role: 'inventory', type: 'staff', dept: 'Central Warehouse' },
@@ -104,31 +103,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
             Z
           </div>
           <div>
-            <h1 className="font-extrabold text-sm text-charcoal-900 leading-tight">ZenLyft OS</h1>
-            <span className="text-[10px] text-forest-700 font-bold block uppercase tracking-wider">Manufacturing Platform</span>
+            <h1 className="font-extrabold text-sm text-charcoal-900 leading-tight">ZenLyft Foods Manufacturing</h1>
+            <span className="text-[10px] text-forest-700 font-bold block uppercase tracking-wider">Manufacturing OS</span>
           </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {onOpenPitch && (
-            <button
-              onClick={onOpenPitch}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 rounded-lg text-xs font-bold border border-amber-400/50 transition shadow-sm"
-            >
-              <Target className="w-3.5 h-3.5 text-amber-700" />
-              <span>Pitch Deck</span>
-            </button>
-          )}
-
-          {onOpenBenchmark && (
-            <button
-              onClick={onOpenBenchmark}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-cream-100 text-charcoal-700 rounded-lg text-xs font-bold border border-subtle-border transition shadow-sm"
-            >
-              <Play className="w-3.5 h-3.5 text-forest-700 fill-forest-700" />
-              <span className="hidden sm:inline">Section 5 Benchmark</span>
-            </button>
-          )}
         </div>
       </header>
 
@@ -153,8 +130,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               type="button"
               onClick={() => {
                 setLoginMode('admin');
-                setUsername('factory_admin');
-                setPassword('Admin@123');
                 setError(null);
               }}
               className={`py-2 text-[11px] font-bold rounded-lg transition flex items-center justify-center space-x-1 ${
@@ -171,8 +146,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               type="button"
               onClick={() => {
                 setLoginMode('staff');
-                setUsername('supervisor');
-                setPassword('ZenLyft@123');
                 setError(null);
               }}
               className={`py-2 text-[11px] font-bold rounded-lg transition flex items-center justify-center space-x-1 ${
@@ -192,8 +165,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </h2>
             <p className="text-xs text-charcoal-500 mt-1">
               {loginMode === 'admin'
-                ? 'Primary business controller, approvals, GST & user administration'
-                : 'Dedicated access for floor supervisors, inventory & accounting'}
+                ? 'Central administrative oversight, approvals and governance'
+                : 'Operational portal for production, inventory and accounting'}
             </p>
           </div>
 
@@ -218,7 +191,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. factory_admin"
+                  placeholder="Enter your username"
                   className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
               </div>
@@ -226,20 +199,27 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-charcoal-700 mb-1">
-                Secure Password
+                Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-500">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
+                  placeholder="Enter your password"
+                  className="w-full pl-9 pr-10 py-2.5 bg-cream-50 border border-subtle-border rounded-xl text-charcoal-900 text-xs placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-forest-700 font-medium"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-charcoal-400 hover:text-charcoal-700"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -248,42 +228,44 @@ export const LoginView: React.FC<LoginViewProps> = ({
               disabled={loading}
               className="w-full py-2.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center space-x-2 disabled:opacity-50"
             >
-              <span>{loading ? 'Authenticating...' : 'Sign In to Workplace'}</span>
+              <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="mt-6 pt-5 border-t border-subtle-divider">
-            <span className="text-[11px] font-semibold text-charcoal-500 block mb-2 text-center">
-              1-Click Verified Role Credentials
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts
-                .filter(a => a.type === loginMode)
-                .map((acc) => (
-                  <button
-                    key={acc.username}
-                    type="button"
-                    onClick={() => handleSelectDemo(acc)}
-                    className={`p-2 rounded-lg border text-left transition ${
-                      username === acc.username 
-                        ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
-                        : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold">{acc.label}</div>
-                    <div className="text-[10px] text-charcoal-500">{acc.dept}</div>
-                  </button>
-                ))}
-            </div>
-          </div>
+          {/* Evaluation Access Disclosure (Only rendered if VITE_SHOW_EVAL_TOOLS is true) */}
+          {showEvalTools && (
+            <details className="mt-6 pt-4 border-t border-subtle-divider text-xs text-charcoal-500">
+              <summary className="cursor-pointer font-semibold text-charcoal-600 hover:text-charcoal-900 text-center select-none">
+                Evaluation Access (Preconfigured Accounts)
+              </summary>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                {demoAccounts
+                  .filter(a => a.type === loginMode)
+                  .map((acc) => (
+                    <button
+                      key={acc.username}
+                      type="button"
+                      onClick={() => handleSelectDemo(acc)}
+                      className={`p-2 rounded-lg border text-left transition ${
+                        username === acc.username 
+                          ? 'border-forest-700 bg-forest-100 text-forest-700 font-bold' 
+                          : 'border-subtle-border bg-cream-50 text-charcoal-700 hover:bg-cream-100'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{acc.label}</div>
+                      <div className="text-[10px] text-charcoal-500">{acc.dept}</div>
+                    </button>
+                  ))}
+              </div>
+            </details>
+          )}
         </div>
       </main>
 
       {/* Footer */}
       <footer className="max-w-md w-full mx-auto text-center py-2 text-[11px] text-charcoal-500">
-        ZenLyft Manufacturing OS • Live MongoDB Atlas
+        ZenLyft Manufacturing OS v1.0.0 • Enterprise Edition
       </footer>
     </div>
   );
