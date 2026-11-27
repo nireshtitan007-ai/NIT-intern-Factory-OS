@@ -704,11 +704,12 @@ export class ApiController {
   static async updateRunOverheads(req: Request, res: Response) {
     try {
       const user = (req as AuthenticatedRequest).user;
-      const { laborCost, overheadCost } = req.body;
+      const laborCost = req.body.directLaborCost !== undefined ? req.body.directLaborCost : req.body.laborCost;
+      const overheadCost = req.body.directOverheadCost !== undefined ? req.body.directOverheadCost : req.body.overheadCost;
       const run = await ProductionService.updateOverheads(
         req.params.id,
-        Number(laborCost),
-        Number(overheadCost),
+        Number(laborCost ?? 0),
+        Number(overheadCost ?? 0),
         user?.name || user?.username || 'Factory Admin',
         user?.role || 'admin'
       );
