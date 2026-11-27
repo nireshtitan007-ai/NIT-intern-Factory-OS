@@ -128,9 +128,14 @@ async function main() {
 
     // 11. Section 5 Benchmark Execution Modal
     console.log('[Screenshots] Capturing 11-benchmark-modal.png...');
-    await clickNav('Benchmark');
-    await new Promise(r => setTimeout(r, 6000));
-    await waitAndSave('11-benchmark-modal.png', 1000);
+    await page.evaluate(`(() => {
+      const userBtn = document.querySelector('button[title="User account & profile"]');
+      if (userBtn) userBtn.click();
+    })()`);
+    await new Promise(r => setTimeout(r, 800));
+    await clickNav('Run NIT Benchmark');
+    await new Promise(r => setTimeout(r, 7000));
+    await waitAndSave('11-benchmark-modal.png', 1500);
 
     console.log('[Screenshots] ✓ All 11 screenshots successfully captured and saved in docs/screenshots/');
   } catch (err) {

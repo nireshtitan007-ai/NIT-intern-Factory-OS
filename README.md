@@ -18,51 +18,51 @@ It completely eliminates fragmented WhatsApp order re-entry, disconnected spread
 
 ## 2. Visual Tour & Interface Gallery
 
-The platform provides role-tailored workspaces for every factory stakeholder:
+The platform provides role-tailored workspaces for every factory stakeholder, redesigned with an enterprise-grade commercial interface:
 
 ### 1. Unified Authentication Gateway
 ![Login Gateway](docs/screenshots/01-login-gateway.png)
-*Multi-role login gateway featuring one-click demo credentials, PWA installation status, and quick-access NIT Benchmark execution.*
+*Pristine commercial login gateway featuring secure role authentication, show/hide password toggle, and collapsible evaluator access tray (`VITE_SHOW_EVAL_TOOLS`).*
 
-### 2. Admin Control Centre — Executive Overview
+### 2. Commercial Top Navigation Bar & Executive Overview
 ![Admin Overview](docs/screenshots/02-admin-overview.png)
-*Authoritative administrative dashboard showing active revenue, pending order approvals, warehouse inventory valuation, and recent audit logs.*
+*Commercial header featuring dynamic factory branding (`GET /api/settings`), desktop `Ctrl+K` global search across invoices, orders and customers, live IndexedDB sync status pill, notifications bell with real-time variance/stock alerts, and executive revenue cards.*
 
 ### 3. Billing Desk, Order Editing & Credit Notes
 ![Admin Billing Desk](docs/screenshots/03-admin-billing-desk.png)
-*Order management desk supporting inline order edits, partial dispatch tracking, invoice cancellation with automatic Credit Note issuance, and pre-filled WhatsApp share links.*
+*Order management desk supporting sticky table headers, click-to-copy badges (`CopyableBadge`) for Order and Invoice IDs, table pagination, inline order editing, partial dispatch tracking, and invoice cancellation with automatic Credit Note generation.*
 
 ### 4. Enterprise Master Data Catalog
 ![Admin Masters](docs/screenshots/04-admin-masters.png)
-*Centralized master catalog for Customers, Products (HSN & GST), Raw Materials (WAC rates), BOM Standard Recipes, and Approved Suppliers.*
+*Centralized master catalog with pagination and clean empty states for Customers, Products (HSN & GST), Raw Materials (WAC rates), BOM Standard Recipes, and Approved Suppliers.*
 
 ### 5. Salesman Field Terminal (Offline-First PWA)
 ![Salesman PWA](docs/screenshots/05-salesman-pwa.png)
-*Mobile-optimized rapid order terminal with quantity stepper controls (`+50`, `+100`), Dexie.js IndexedDB offline sync queue, and route performance analytics.*
+*Mobile-optimized route terminal with dedicated tabs ("New Order", "My Orders", "My Sales"), quantity stepper controls (`+50`, `+100`), Dexie.js IndexedDB offline sync queue pill, and GPS check-in verification.*
 
 ### 6. Production Floor & Recipe Scaler (English)
 ![Production Floor English](docs/screenshots/06-production-floor-en.png)
-*Floor supervisor workstation featuring interactive recipe scaling (0.5x, 1x, 2x, 3x), real-time tolerance alerting (flagging -6% yield and +5% oil variance in red), and automated production planning suggestions.*
+*Floor supervisor workstation featuring interactive recipe scaling (0.5x, 1x, 2x, 3x), real-time tolerance alerting (flagging -6% yield and +5% oil variance in red), atomic post-run overhead editing, and unit cost calculation (₹31.14 / packet).*
 
 ### 7. Production Floor (Tamil Bilingual Mode)
 ![Production Floor Tamil](docs/screenshots/07-production-floor-ta.png)
-*Instant bilingual language toggle (`தமிழ்`) translating recipe quantities and variance alerts for floor mixing and packaging workers.*
+*Instant bilingual language toggle (`தமிழ்`) accessible directly from the top navigation bar, translating recipe quantities and variance alerts for floor mixing and packaging workers.*
 
 ### 8. Central Warehouse & Double-Entry Stock Ledger
 ![Central Inventory](docs/screenshots/08-central-inventory.png)
-*Authoritative stock ledger with category summary valuation cards, low-stock reorder badges, traceable `sourceDocType`/`sourceDocId` columns, and First-Expiry-First-Out (FEFO) batch tracking.*
+*Authoritative stock ledger with sticky headers, click-to-copy document IDs, category summary valuation cards, low-stock reorder badges, traceable `sourceDocType`/`sourceDocId` columns, and First-Expiry-First-Out (FEFO) batch tracking.*
 
 ### 9. External Auditor Portal & Statutory Tax Schedules
 ![Auditor Portal](docs/screenshots/09-auditor-portal.png)
-*Read-only statutory portal with date-filtered Sales Register, Purchase Register, GSTR-1 Tables, GSTR-3B summary, and export options in Excel (.xlsx with summary formulas), CSV, PDF, and Tally Prime XML.*
+*Strictly read-only statutory portal with date-filtered Sales Register, Purchase Register, GSTR-1 Tables, GSTR-3B summary, and export options in Excel (.xlsx with formulas), CSV, PDF, and Tally Prime XML.*
 
 ### 10. Owner Profit Intelligence & Audit Trail
 ![Owner Intelligence](docs/screenshots/10-owner-intelligence.png)
-*Executive dashboard visualizing unit gross margins (₹31.14 packet cost vs ₹50 selling price), turnover, and append-only tamper-evident audit history.*
+*Executive dashboard visualizing unit gross margins (₹31.14 packet cost vs ₹50 selling price, 37.7% margin), factory turnover, and append-only tamper-evident audit history.*
 
 ### 11. Section 5 Mandatory Benchmark Verification Modal
 ![Benchmark Modal](docs/screenshots/11-benchmark-modal.png)
-*Interactive benchmark execution modal verifying 100% mathematical precision across all 9 NIT Tiruchirappalli problem statement criteria.*
+*Interactive benchmark execution modal triggered from the top-bar administrator profile menu, verifying 100% mathematical precision across all 9 NIT Tiruchirappalli problem statement criteria.*
 
 ---
 
@@ -204,3 +204,27 @@ To maintain total honesty during interview evaluation:
 | **Multi-Format Reports** | **Production Real** | Excel (.xlsx with formulas), CSV, PDF & Tally Prime XML. |
 | **E-Invoice (IRN & QR)** | **Simulated (Mock)** | Simulated standard NIC sandbox schema with QR code generator. Labelled `(mock)` in UI. |
 | **WhatsApp Notifications** | **Simulated (Mock)** | Local message queue simulating OpenWA webhook container. Labelled `(mock)` in UI. |
+
+---
+
+## 8. Commercial UI Architecture & Design System
+
+The frontend is built with **React 18 + Vite + Tailwind CSS + Dexie.js (IndexedDB) + Lucide Icons**, crafted as an enterprise SaaS product:
+
+### 1. Commercial Top Navigation Bar (`Navbar.tsx`)
+- **Dynamic Factory Branding:** Queries `GET /api/settings` for factory name and state (`"ZenLyft Foods Pvt Ltd"`), paired with context-aware module subtitles (`"Billing Desk"`, `"Production Floor"`).
+- **Desktop Global Search (`Ctrl+K`):** Instant keyboard-shortcut search querying invoices, orders, and customer accounts with direct navigation.
+- **Offline Sync Status Pill:** Real-time visual indicator displaying `"Online"` (emerald pulse) or `"Offline"` (amber) along with the active IndexedDB unsynced order count (`"Online · 0 queued"`). Clicking the pill toggles offline mode for immediate field testing.
+- **Operational Notifications Bell:** Live unread badge count with a popover tray surfacing production variance flags, warehouse low-stock reorder warnings, and pending sales order approvals.
+- **Role-Based Profile Menu:** User avatar, name, role badge, quick links for profile and password change, and evaluator tooling ("Run NIT Benchmark" and "Reset Demo Data" with typed confirmation, active when `VITE_SHOW_EVAL_TOOLS=true`).
+
+### 2. Standardized Dialog & Notification System
+- **Toast Notifications (`Toast.tsx`):** Provides `useToast()` hook with auto-dismissing toast alerts for success, error, warning, and info states. Completely replaces raw browser `alert()`.
+- **Accessible Confirmation Dialogs (`ConfirmDialog.tsx`):** Provides `useConfirm()` hook supporting confirm modals and input prompts (e.g. rejection justifications), replacing browser `confirm()` and `prompt()`.
+- **Global Error Boundary (`ErrorBoundary.tsx`):** Catches unhandled frontend exceptions and renders an enterprise crash recovery card with a one-click session reload.
+
+### 3. Data Presentation & Table Standards
+- **Click-to-Copy Badges (`CopyableBadge.tsx`):** Interactive mono badges for Order numbers (`SO-...`), Invoice numbers (`INV-...`), and Production Run numbers (`PR-...`) that copy to the clipboard with animated checkmark feedback.
+- **Table Pagination & Empty States:** [`TablePagination.tsx`](file:///c:/Users/91934/.gemini/antigravity/scratch/Nash%20factory%20ERP/client/src/components/TablePagination.tsx) and [`TableEmptyState.tsx`](file:///c:/Users/91934/.gemini/antigravity/scratch/Nash%20factory%20ERP/client/src/components/TableEmptyState.tsx) provide consistent table navigation and helpful empty placeholders across Admin, Inventory, and Auditor desks.
+- **Indian Monetary Formatting (`formatters.ts`):** Centralized helper functions `formatCurrencyRupees` and `formatCurrencyPaise` formatting numbers to standard Indian currency (`₹7,875.00`) and preventing floating-point rounding artifacts.
+- **Persistent Enterprise Footer (`App.tsx`):** Subtle watermark across all pages displaying `ZenLyft Manufacturing OS v1.0.0 • Enterprise Edition` and cluster metadata.
