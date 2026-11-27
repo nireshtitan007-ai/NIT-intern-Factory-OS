@@ -2,7 +2,7 @@
   "name": "zenlyft-erp-server",
   "version": "1.0.0",
   "description": "ZenLyft Manufacturing Business OS - Backend API",
-  "main": "dist/app.js",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",

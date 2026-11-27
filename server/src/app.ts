@@ -30,8 +30,8 @@ export const createApp = (options?: AppOptions) => {
 
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman) or test environment
-      if (!origin || process.env.NODE_ENV === 'test' || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      // Allow requests with no origin (like mobile apps, curl, postman), test environment, or Vercel domains
+      if (!origin || process.env.NODE_ENV === 'test' || process.env.VERCEL || origin.endsWith('.vercel.app') || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
         return callback(null, true);
       }
       return callback(new Error(`CORS policy does not allow access from origin: ${origin}`));
@@ -121,3 +121,5 @@ export const createApp = (options?: AppOptions) => {
 
   return app;
 };
+
+export default createApp;
