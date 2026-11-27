@@ -44,6 +44,9 @@ import { RealtimeService } from '../services/realtime.service';
 
 const router = Router();
 
+// --- Health Check (Public / Zero-Auth for Liveness Probes & Docker) ---
+router.get('/health', (req, res) => res.status(200).json({ status: 'healthy', system: 'ZenLyft Manufacturing OS', timestamp: new Date().toISOString() }));
+
 // --- Authentication & Multi-User Identity ---
 router.post('/auth/login', validateBody(loginSchema), AuthController.login);
 router.post('/auth/admin-login', validateBody(loginSchema), AuthController.adminLogin);

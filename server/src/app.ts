@@ -9,7 +9,12 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import apiRoutes from './routes/api.routes';
 
-export const createApp = () => {
+export interface AppOptions {
+  authRateLimitMax?: number;
+  apiRateLimitMax?: number;
+}
+
+export const createApp = (options?: AppOptions) => {
   const app = express();
 
   // Security Headers via Helmet
@@ -37,7 +42,7 @@ export const createApp = () => {
   // General rate limiter for API (protect against abuse)
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.NODE_ENV === 'test' ? 10000 : 500, // generous for integration testing
+    max: options?.apiRateLimitMax ?? (process.env.NODE_ENV === 'test' ? 10000 : 500),
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'Too many requests from this IP, please try again after 15 minutes.' }
@@ -46,7 +51,7 @@ export const createApp = () => {
   // Strict rate limiter for Authentication
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === 'test' ? 1000 : 30, // strict in production
+    max: options?.authRateLimitMax ?? (process.env.NODE_ENV === 'test' ? 1000 : 30),
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'Too many login attempts, please try again after 15 minutes.' }
@@ -69,10 +74,17 @@ export const createApp = () => {
   app.use('/api/auth/admin-login', authLimiter);
   app.use('/api/auth/salesman-mobile-login', authLimiter);
 
-  // Health check endpoint
-  app.get('/health', (req, res) => {
-    res.json({ status: 'healthy', system: 'ZenLyft Manufacturing OS', timestamp: new Date() });
-  });
+  // Health check endpoints (public / unauthenticated)
+  const handleHealth = (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'healthy',
+      system: 'ZenLyft Manufacturing OS',
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  app.get('/health', handleHealth);
+  app.get('/api/health', handleHealth);
 
   // Mount API routes
   app.use('/api', apiRoutes);

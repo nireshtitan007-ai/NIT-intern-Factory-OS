@@ -478,4 +478,45 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
       expect(resAuditor.body.settings.invoiceTerms).toBeDefined();
     });
   });
+
+  describe('8. Public Zero-Auth Health Endpoint (GET /api/health & GET /health)', () => {
+    it('returns 200 without any authentication token on /api/health', async () => {
+      const res = await request(app).get('/api/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('healthy');
+      expect(res.body.system).toBe('ZenLyft Manufacturing OS');
+      expect(res.body.timestamp).toBeDefined();
+    });
+
+    it('returns 200 without any authentication token on /health', async () => {
+      const res = await request(app).get('/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('healthy');
+      expect(res.body.system).toBe('ZenLyft Manufacturing OS');
+    });
+  });
+
+  describe('9. Authentication Rate Limiting (Brute-Force Protection)', () => {
+    it('enforces HTTP 429 Too Many Requests when login threshold is exceeded', async () => {
+      // Create dedicated app instance with a strict threshold of 3 attempts
+      const strictApp = createApp({ authRateLimitMax: 3 });
+
+      // First 3 attempts should be evaluated normally (401 invalid credentials)
+      for (let i = 0; i < 3; i++) {
+        const res = await request(strictApp)
+          .post('/api/auth/login')
+          .send({ username: 'factory_admin', password: 'WrongPassword123!' });
+        expect(res.status).toBe(401);
+      }
+
+      // 4th attempt must be blocked by express-rate-limit with 429 Too Many Requests
+      const blockedRes = await request(strictApp)
+        .post('/api/auth/login')
+        .send({ username: 'factory_admin', password: 'WrongPassword123!' });
+
+      expect(blockedRes.status).toBe(429);
+      expect(blockedRes.body.success).toBe(false);
+      expect(blockedRes.body.error).toContain('Too many login attempts');
+    });
+  });
 });
