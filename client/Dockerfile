@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+ARG VITE_SHOW_EVAL_TOOLS=true
+ENV VITE_SHOW_EVAL_TOOLS=$VITE_SHOW_EVAL_TOOLS
 RUN npm run build
 
 FROM nginx:alpine AS runner

@@ -21,7 +21,7 @@
 
 ## Phase 2: Section 5 Benchmark Execution (1:30 – 3:00)
 1. **Live Benchmark Engine:**
-   - Switch to terminal: `npm run benchmark --prefix server` (or click **"Verify Section 5 Benchmark"** in top bar).
+   - Switch to terminal: `npm run benchmark --prefix server` (or click **"Run NIT Benchmark"** in user profile menu).
    - Walk through the output table:
      - **Flour Closing Balance:** $100\text{ kg} + 60\text{ kg (purchased at ₹45)} - 40\text{ kg (used)} = \mathbf{120\text{ kg}}$
      - **Weighted Average Cost (WAC):** $\frac{(100 \times 42) + (60 \times 45)}{160} = \mathbf{₹43.125/\text{kg}}$
@@ -39,7 +39,7 @@
    - Notice salesman sees **only their own assigned customers and orders** (strict server-side multi-user privacy).
 2. **Offline-First Ordering (Dexie IndexedDB Queue & Service Worker Caching):**
    - **Manual Offline Check Protocol:**
-     1. Open Chrome DevTools (`F12`), navigate to **Network** tab, and set throttling to **Offline** (or toggle **"Simulate Offline"** in the top navigation bar).
+     1. Open Chrome DevTools (`F12`), navigate to **Network** tab, and set throttling to **Offline** (or click the **Sync Status Pill** in the top navigation bar).
      2. Notice product and customer catalogs remain instantly accessible via Workbox `stale-while-revalidate` cache.
      3. Select **Retailer A**, choose **Murukku 200g**, and use rapid stepper buttons (`+50`, `+100`) to set quantity to **150 packets** in under 15 seconds.
      4. Click **"Queue Offline Order"**.
@@ -86,7 +86,7 @@
 
 ## Phase 6: External Auditor Portal & Multi-Format Exports (6:45 – 8:00)
 1. **Auditor Portal:**
-   - Log in as `auditor` (`Nash@123`).
+   - Log in as `auditor` (`ZenLyft@123`).
    - Notice all mutating buttons are disabled: **Auditor is strictly read-only**.
 2. **GSTR-1 & GSTR-3B Tax Summary:**
    - Review Table 4 (B2B Supplies) and Table 12 (HSN Summary).

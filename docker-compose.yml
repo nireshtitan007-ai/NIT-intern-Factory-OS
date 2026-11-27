@@ -46,6 +46,8 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        VITE_SHOW_EVAL_TOOLS: ${VITE_SHOW_EVAL_TOOLS:-true}
     container_name: zenlyft-client
     restart: always
     ports:

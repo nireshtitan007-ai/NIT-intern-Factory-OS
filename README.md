@@ -4,11 +4,13 @@
 
 [![CI](https://github.com/nireshtitan007-ai/NIT-intern-Factory-OS/actions/workflows/ci.yml/badge.svg)](https://github.com/nireshtitan007-ai/NIT-intern-Factory-OS/actions/workflows/ci.yml)
 
+> **Demo video:** <add link>
+
 ---
 
 ## 1. Executive Summary
 
-**ZenLyft Manufacturing OS** is a commercial-grade, offline-first manufacturing operating system that takes a small packaged food factory from a route salesman's field mobile order all the way to the monthly auditor's statutory tax report.
+**ZenLyft Manufacturing OS** is an offline-first manufacturing operating system that takes a small packaged food factory from a route salesman's field mobile order all the way to the monthly auditor's statutory tax report.
 
 It completely eliminates fragmented WhatsApp order re-entry, disconnected spreadsheets, paper-based floor logs, unnoticed production wastage, and month-end reconciliation bottlenecks by intertwining two core operational loops around an authoritative, immutable double-entry stock ledger:
 1. **Sales & Billing Loop:** Mobile Field Order $\rightarrow$ Stock Availability Check $\rightarrow$ GST Tax Invoice $\rightarrow$ FEFO Dispatch $\rightarrow$ Payments & Receivables Aging.
@@ -22,7 +24,7 @@ The platform provides role-tailored workspaces for every factory stakeholder, re
 
 ### 1. Unified Authentication Gateway
 ![Login Gateway](docs/screenshots/01-login-gateway.png)
-*Pristine commercial login gateway featuring secure role authentication, show/hide password toggle, and collapsible evaluator access tray (`VITE_SHOW_EVAL_TOOLS`).*
+*Login gateway featuring role-based authentication, show/hide password toggle, and collapsible evaluator access tray (`VITE_SHOW_EVAL_TOOLS`).*
 
 ### 2. Commercial Top Navigation Bar & Executive Overview
 ![Admin Overview](docs/screenshots/02-admin-overview.png)
@@ -58,7 +60,7 @@ The platform provides role-tailored workspaces for every factory stakeholder, re
 
 ### 10. Owner Profit Intelligence & Audit Trail
 ![Owner Intelligence](docs/screenshots/10-owner-intelligence.png)
-*Executive dashboard visualizing unit gross margins (₹31.14 packet cost vs ₹50 selling price, 37.7% margin), factory turnover, and append-only tamper-evident audit history.*
+*Executive dashboard visualizing unit gross margins (₹31.14 packet cost vs ₹50 selling price, 37.7% margin), factory turnover, and append-only audit log (no hash chain).*
 
 ### 11. Section 5 Mandatory Benchmark Verification Modal
 ![Benchmark Modal](docs/screenshots/11-benchmark-modal.png)
@@ -100,7 +102,7 @@ The frontend client includes a configurable environment flag in `client/.env`:
 VITE_SHOW_EVAL_TOOLS=true
 ```
 - **When set to `true` (Evaluation Mode):** Evaluators can quickly select demo roles via a collapsed `<details><summary>Evaluation access</summary></details>` tray on the login page. When logged in as `factory_admin`, evaluators can trigger "Run NIT Benchmark" and "Reset Demo Data" directly from the user profile avatar dropdown in the commercial top navigation bar.
-- **When set to `false` (Pristine Commercial Mode):** All evaluation credentials, benchmark modals, and reset buttons are completely hidden from the UI, presenting an uncompromising enterprise production product.
+- **When set to `false` (Operational Mode):** All evaluation credentials, benchmark modals, and reset buttons are completely hidden from the UI, presenting standard operational views.
 
 ### Option B: Docker Compose Setup (Single Command Boot)
 
@@ -115,7 +117,7 @@ docker compose up --build -d
 
 ## 4. Demo User Accounts & Access Matrix
 
-ZenLyft enforces server-side Role-Based Access Control (RBAC) across all endpoints with tamper-evident audit logging.
+ZenLyft enforces server-side Role-Based Access Control (RBAC) across all endpoints with append-only audit logging (no hash chain).
 
 | Username | Password | Role | Operational Scope |
 |---|---|---|---|
@@ -225,6 +227,26 @@ The frontend is built with **React 18 + Vite + Tailwind CSS + Dexie.js (IndexedD
 
 ### 3. Data Presentation & Table Standards
 - **Click-to-Copy Badges (`CopyableBadge.tsx`):** Interactive mono badges for Order numbers (`SO-...`), Invoice numbers (`INV-...`), and Production Run numbers (`PR-...`) that copy to the clipboard with animated checkmark feedback.
-- **Table Pagination & Empty States:** [`TablePagination.tsx`](file:///c:/Users/91934/.gemini/antigravity/scratch/Nash%20factory%20ERP/client/src/components/TablePagination.tsx) and [`TableEmptyState.tsx`](file:///c:/Users/91934/.gemini/antigravity/scratch/Nash%20factory%20ERP/client/src/components/TableEmptyState.tsx) provide consistent table navigation and helpful empty placeholders across Admin, Inventory, and Auditor desks.
+- **Table Pagination & Empty States:** [`TablePagination.tsx`](client/src/components/TablePagination.tsx) and [`TableEmptyState.tsx`](client/src/components/TableEmptyState.tsx) provide consistent table navigation and helpful empty placeholders across Admin, Inventory, and Auditor desks.
 - **Indian Monetary Formatting (`formatters.ts`):** Centralized helper functions `formatCurrencyRupees` and `formatCurrencyPaise` formatting numbers to standard Indian currency (`₹7,875.00`) and preventing floating-point rounding artifacts.
 - **Persistent Enterprise Footer (`App.tsx`):** Subtle watermark across all pages displaying `ZenLyft Manufacturing OS v1.0.0 • Enterprise Edition` and cluster metadata.
+
+---
+
+## 9. Assumptions
+
+1. **GST Rates & Jurisdiction:** GST rate is defined on the Product master (`Product.gstRate = 5%`) under HSN code `19059040` (Murukku snack). The factory is located in Tiruchirappalli, Tamil Nadu (State Code `33`). Intra-state dispatches apply 2.5% CGST + 2.5% SGST; inter-state dispatches apply 5.0% IGST.
+2. **Inventory Valuation Methodology:** Raw and packaging materials are valued strictly using the Weighted Average Cost (WAC) formula upon every inward purchase receipt: $\text{WAC} = \frac{\text{Prior Value} + \text{Inward Value}}{\text{Prior Qty} + \text{Inward Qty}}$.
+3. **Overhead & Cost Allocation:** Batch cost is computed as $\text{Direct Materials} + \text{Direct Labour} + \text{Factory Power/Gas Overheads}$. Unit cost per packet is allocated as $\frac{\text{Total Production Cost}}{\text{Good Output Packets}}$.
+4. **Mock E-Invoice & E-Way Bill:** NIC / GST portal e-invoicing is simulated using an internal mock engine (`isMockEInvoice: true`) that generates deterministic 64-character SHA-256 IRN hashes and standard-compliant QR payload schemas.
+5. **Demonstration Dataset:** Initial master data and ledger balances reflect the NIT Tiruchirappalli Section 5 benchmark baseline scenario for verification and testing.
+
+---
+
+## 10. Known Gaps
+
+1. **Production GSTN / NIC Portal Integration:** The system uses an offline mock generator following NIC Schema v1.1 rather than an active subscription to live government IRP / GSTN servers via ASP/GSP credentials.
+2. **Model Dual Representation (Paise Storage & Virtual Mappings):** Database collections persist monetary amounts in integer `*Paise` fields to avoid floating-point drift, while exposing decimal rupee equivalents via Mongoose virtual getters/setters (`toJSON: { virtuals: true }`) for client compatibility rather than decoupled DTO serializer classes.
+3. **Audit Log Cryptographic Chaining:** Audit trails are append-only at the database collection level (with immutable Mongoose pre-hooks blocking updates and deletions), but do not include a cryptographic SHA-256 hash chain or Merkle tree.
+4. **Commercial SMS / WhatsApp Gateway:** Order dispatch notifications and invoice sharing generate pre-filled WhatsApp Web intents and local event queues rather than integrating a paid commercial BSP API (e.g., Twilio or Meta WhatsApp Business Cloud API).
+
