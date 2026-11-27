@@ -12,7 +12,7 @@ export interface PDFGeneratorOptions {
 export class PDFInvoiceGenerator {
   static async generateInvoicePDF(invoice: IInvoice, options?: PDFGeneratorOptions): Promise<Buffer> {
     const isCreditNote = !!options?.isCreditNote;
-    const settings = await (Settings as any).getSettings(invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT');
+    const settings = await Settings.getSettings(invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT');
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 36, size: 'A4' });

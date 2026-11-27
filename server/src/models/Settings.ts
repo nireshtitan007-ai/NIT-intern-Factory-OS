@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Model } from 'mongoose';
 
 export interface IBankDetails {
   bankName: string;
@@ -19,6 +19,10 @@ export interface ISettings extends Document {
   invoiceTerms: string;
   defaultTolerancePercent: number;
   updatedAt: Date;
+}
+
+export interface ISettingsModel extends Model<ISettings> {
+  getSettings(tenantId: string): Promise<ISettings>;
 }
 
 const BankDetailsSchema = new Schema<IBankDetails>({
@@ -69,4 +73,4 @@ SettingsSchema.statics.getSettings = async function(tenantId: string): Promise<I
   return doc;
 };
 
-export const Settings = model<ISettings, any>('Settings', SettingsSchema);
+export const Settings = model<ISettings, ISettingsModel>('Settings', SettingsSchema);

@@ -82,7 +82,7 @@ cd "NIT-intern-Factory-OS"
 # 2. Server setup (Node 18+ required)
 cd server
 npm install
-npm test            # Runs all 15 comprehensive test suites (137 tests)
+npm test            # Runs all 15 comprehensive test suites (139 tests)
 npm run benchmark   # Executes the Section 5 NIT Trichy Benchmark Scenario
 
 # 3. Start Backend API Server

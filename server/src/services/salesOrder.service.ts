@@ -330,7 +330,7 @@ export class SalesOrderService {
     if (!customer) throw new Error('Customer not found');
 
     const tenantId = order.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
-    const settings = await (Settings as any).getSettings(tenantId);
+    const settings = await Settings.getSettings(tenantId);
     const factoryState = settings.stateName || process.env.FACTORY_STATE || 'Tamil Nadu';
     const factoryStateCode = settings.stateCode || process.env.FACTORY_STATE_CODE || '33';
 

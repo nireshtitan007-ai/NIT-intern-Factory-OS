@@ -436,4 +436,46 @@ describe('ZenLyft Phase 1 - Security and Correctness Acceptance Test Suite', () 
       ).rejects.toThrow('IMMUTABLE_AUDIT_LOG_VIOLATION');
     });
   });
+
+  describe('7. Role-Based Factory Settings Filtering (GET /api/settings)', () => {
+    it('Returns only public factory details (name, state, GSTIN) to salesman and production', async () => {
+      const resSalesman = await request(app)
+        .get('/api/settings')
+        .set('Authorization', `Bearer ${salesmanToken}`);
+
+      expect(resSalesman.status).toBe(200);
+      expect(resSalesman.body.success).toBe(true);
+      expect(resSalesman.body.settings.legalName).toBeDefined();
+      expect(resSalesman.body.settings.gstin).toBeDefined();
+      expect(resSalesman.body.settings.stateCode).toBeDefined();
+      // Sensitive commercial / bank data hidden
+      expect(resSalesman.body.settings.bankDetails).toBeUndefined();
+      expect(resSalesman.body.settings.invoiceTerms).toBeUndefined();
+
+      const resProd = await request(app)
+        .get('/api/settings')
+        .set('Authorization', `Bearer ${productionToken}`);
+
+      expect(resProd.status).toBe(200);
+      expect(resProd.body.settings.bankDetails).toBeUndefined();
+    });
+
+    it('Returns full settings including bank details and invoice terms to admin and auditor', async () => {
+      const resAdmin = await request(app)
+        .get('/api/settings')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(resAdmin.status).toBe(200);
+      expect(resAdmin.body.settings.bankDetails).toBeDefined();
+      expect(resAdmin.body.settings.invoiceTerms).toBeDefined();
+
+      const resAuditor = await request(app)
+        .get('/api/settings')
+        .set('Authorization', `Bearer ${auditorToken}`);
+
+      expect(resAuditor.status).toBe(200);
+      expect(resAuditor.body.settings.bankDetails).toBeDefined();
+      expect(resAuditor.body.settings.invoiceTerms).toBeDefined();
+    });
+  });
 });

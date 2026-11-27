@@ -77,7 +77,7 @@ export class EInvoiceService {
     }
 
     const tenantId = invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
-    const settings = await (Settings as any).getSettings(tenantId);
+    const settings = await Settings.getSettings(tenantId);
     const customer = await Customer.findById(invoice.customerId);
 
     const d = new Date(invoice.createdAt || Date.now());
@@ -188,7 +188,7 @@ export class EInvoiceService {
     }
 
     const tenantId = invoice.tenantId || process.env.DEFAULT_TENANT_ID || 'DEFAULT_TENANT';
-    const settings = await (Settings as any).getSettings(tenantId);
+    const settings = await Settings.getSettings(tenantId);
 
     const d = new Date(invoice.createdAt || Date.now());
     const year = d.getFullYear();

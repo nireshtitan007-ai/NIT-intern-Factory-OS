@@ -16,6 +16,7 @@ import {
   Supplier,
   Settings
 } from '../models';
+import { StockItemType } from '../models/StockMovement';
 import { StockLedgerService } from '../services/stockLedger.service';
 import { PurchaseService } from '../services/purchase.service';
 import { ProductionService } from '../services/production.service';
@@ -617,7 +618,7 @@ export class ApiController {
       const movements = await StockLedgerService.getLedgerMovements({
         tenantId,
         itemId: req.query.itemId as string,
-        itemType: req.query.itemType as any,
+        itemType: req.query.itemType as StockItemType | undefined,
         sourceDocType: req.query.sourceDocType as string
       });
       res.json({ success: true, movements: movements.map(m => Serializers.serializeStockMovement(m)) });
@@ -986,7 +987,7 @@ export class ApiController {
       const invoice = await Invoice.findOne({ _id: req.params.id, tenantId }) || await Invoice.findById(req.params.id);
       if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
-      const user = (req as any).user;
+      const user = (req as AuthenticatedRequest).user;
       const updated = await EInvoiceService.generateMockIRN(invoice._id.toString(), {
         username: user?.username || 'system',
         role: user?.role || 'admin'
@@ -1577,17 +1578,37 @@ export class ApiController {
 
   static async getSettings(req: Request, res: Response) {
     try {
-      const tenantId = (req as any).user?.tenantId || 'default';
-      const settings = await (Settings as any).getSettings(tenantId);
-      res.json({
+      const authReq = req as AuthenticatedRequest;
+      const tenantId = authReq.user?.tenantId || getTenantId(req);
+      const userRole = authReq.user?.role;
+      const settings = await Settings.getSettings(tenantId);
+
+      // Public factory metadata visible to all authenticated roles
+      const publicSettings = {
+        legalName: settings.legalName,
+        tradeName: settings.tradeName,
+        address: settings.address,
+        gstin: settings.gstin,
+        stateName: settings.stateName,
+        stateCode: settings.stateCode
+      };
+
+      const privilegedRoles = ['admin', 'owner', 'accountant', 'auditor'];
+      const isPrivileged = userRole && privilegedRoles.includes(userRole);
+
+      if (!isPrivileged) {
+        // Return only public factory details (name, state, GSTIN, address) to salesman, production, inventory
+        return res.json({
+          success: true,
+          settings: publicSettings
+        });
+      }
+
+      // Privileged roles (admin, owner, accountant, auditor) receive full settings including bank details & commercial terms
+      return res.json({
         success: true,
         settings: {
-          legalName: settings.legalName,
-          tradeName: settings.tradeName,
-          address: settings.address,
-          gstin: settings.gstin,
-          stateName: settings.stateName,
-          stateCode: settings.stateCode,
+          ...publicSettings,
           bankDetails: settings.bankDetails,
           invoiceTerms: settings.invoiceTerms,
           defaultTolerancePercent: settings.defaultTolerancePercent
