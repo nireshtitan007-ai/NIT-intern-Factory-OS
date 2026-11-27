@@ -64,15 +64,15 @@ The platform provides role-tailored workspaces for every factory stakeholder, re
 
 ### 11. Section 5 Mandatory Benchmark Verification Modal
 ![Benchmark Modal](docs/screenshots/11-benchmark-modal.png)
-*Interactive benchmark execution modal triggered from the top-bar administrator profile menu, verifying 100% mathematical precision across all 9 NIT Tiruchirappalli problem statement criteria.*
+*Interactive benchmark execution modal triggered from the top-bar administrator profile menu, verifying 100% mathematical precision across all 11 NIT Tiruchirappalli problem statement criteria.*
 
 ---
 
-## 3. Quick Start & Clean-Clone Instructions
+## 3. Quick Start & Setup
 
 ### Option A: Local Development Setup (Zero External Dependencies)
 
-ZenLyft features a built-in MongoDB connection engine with automatic fallback, allowing the entire application and benchmark suite to boot immediately.
+ZenLyft features a built-in MongoDB connection engine with automatic fallback, allowing the entire application and benchmark suite to boot immediately out of the box.
 
 ```bash
 # 1. Clone repository
@@ -95,83 +95,91 @@ npm run build       # Verifies TypeScript compilation and PWA service worker
 npm run dev         # Starts frontend at http://localhost:5173
 ```
 
-#### Evaluation & Commercial Mode Configuration (`VITE_SHOW_EVAL_TOOLS`)
-The frontend client includes a configurable environment flag in `client/.env`:
-```ini
-# client/.env
-VITE_SHOW_EVAL_TOOLS=true
-```
-- **When set to `true` (Evaluation Mode):** Evaluators can quickly select demo roles via a collapsed `<details><summary>Evaluation access</summary></details>` tray on the login page. When logged in as `factory_admin`, evaluators can trigger "Run NIT Benchmark" and "Reset Demo Data" directly from the user profile avatar dropdown in the commercial top navigation bar.
-- **When set to `false` (Operational Mode):** All evaluation credentials, benchmark modals, and reset buttons are completely hidden from the UI, presenting standard operational views.
-
 ### Option B: Docker Compose Setup (Single Command Boot)
 
 ```bash
 docker compose up --build -d
 ```
-- Client accessible at: `http://localhost:5173`
-- Server API accessible at: `http://localhost:5000`
-- Benchmark verification endpoint: `http://localhost:5000/api/benchmark/run`
+- Frontend Client: `http://localhost:5173`
+- Backend API Server: `http://localhost:5000`
+- API Health Status: `http://localhost:5000/api/health`
+- Benchmark API Endpoint: `http://localhost:5000/api/benchmark/run`
+
+### How to Run the Benchmark
+
+The NIT Section 5 benchmark can be executed through both the graphical user interface and the command-line interface:
+1. **Interactive UI Execution:** Log into `http://localhost:5173` as `factory_admin` (with password `Admin@123`). In the top-right navigation bar, click the user avatar dropdown menu and select **"Run NIT Benchmark"**. A modal executes the full 9-step scenario with live animated progress and displays the exact audit check verification table.
+2. **Command-Line Interface (CLI):** Run `npm run benchmark --prefix server` from the repository root (or `npm run benchmark` inside the `server/` directory). It executes the complete lifecycle against the database and outputs an authoritative audit table.
+
+#### Evaluation Mode vs. Commercial Mode (`VITE_SHOW_EVAL_TOOLS`)
+The frontend client includes an evaluation flag in `client/.env` (`VITE_SHOW_EVAL_TOOLS=true`):
+- **When set to `true` (Evaluation Mode, default in Docker & Dev):** The login screen displays an **"Evaluation access"** collapsible tray with quick-fill credentials for all 8 roles. The admin profile avatar dropdown reveals **"Run NIT Benchmark"** and **"Reset Demo Data"**.
+- **When set to `false` (Operational Commercial Mode):** All test credentials and benchmark shortcuts are hidden, presenting a clean commercial SaaS production interface.
 
 ---
 
-## 4. Demo User Accounts & Access Matrix
+## 4. Test Logins & Role Access Matrix
 
-ZenLyft enforces server-side Role-Based Access Control (RBAC) across all endpoints with append-only audit logging (no hash chain).
+ZenLyft enforces server-side Role-Based Access Control (RBAC) across all endpoints with append-only audit logging:
 
-| Username | Password | Role | Operational Scope |
-|---|---|---|---|
-| `factory_admin` | `Admin@123` | `admin` | Full platform control, order approvals, user administration, invoice cancellation. |
-| `owner` | `Admin@123` | `owner` | Executive financial overview, revenue metrics, statutory tax summaries. |
-| `salesman_a` | `ZenLyft@123` | `salesman` | Offline-first field order terminal; route customers; view only own orders. |
-| `salesman_b` | `ZenLyft@123` | `salesman` | Secondary route salesman terminal; Karnataka territory. |
-| `supervisor` | `ZenLyft@123` | `production` | Floor batch logger, recipe standard issue, scrap & overhead tracking. |
-| `inventory_mgr` | `ZenLyft@123` | `inventory` | Central stores management, stock receipts, and FEFO dispatches. |
-| `accountant` | `ZenLyft@123` | `accountant` | Invoicing, collections recording, payment receipts, bank reconciliation. |
-| `auditor` | `ZenLyft@123` | `auditor` | **Strictly read-only** audit portal, GSTR-1, GSTR-3B, Excel (.xlsx), PDF & Tally XML. |
+| Role | Username | Password | Operational Scope | Typical Workflow |
+|---|---|---|---|---|
+| **Admin** | `factory_admin` | `Admin@123` | Full platform administration | User management, order approval, invoice dispatch, credit notes, running benchmark |
+| **Owner** | `owner` | `Admin@123` | Executive oversight & analytics | Executive summary, unit gross margin analysis, factory turnover, audit trail |
+| **Salesman (TN)** | `salesman_a` | `ZenLyft@123` | Route salesman (Intra-state) | Mobile PWA, route customer order booking (Retailer A), offline queue |
+| **Salesman (KA)** | `salesman_b` | `ZenLyft@123` | Route salesman (Inter-state) | Mobile PWA, order booking for Karnataka customers (Distributor B) |
+| **Production Supervisor** | `supervisor` | `ZenLyft@123` | Production floor management | Batch logging, recipe scaling, scrap & variance tracking, overhead allocation |
+| **Inventory Manager** | `inventory_mgr` | `ZenLyft@123` | Central stores management | Purchase receipts, stock ledger inspection, FEFO dispatch verification |
+| **Accountant** | `accountant` | `ZenLyft@123` | Billing & accounts receivable | GST tax invoices, payment receipt logging, customer ledger, bank reconciliation |
+| **Auditor** | `auditor` | `ZenLyft@123` | Statutory compliance (**Strictly read-only**) | Sales/Purchase registers, GSTR-1, GSTR-3B, Excel (.xlsx with formulas), PDF & Tally XML |
 
 ---
 
-## 5. Section 5 Mandatory Benchmark Verification (100% Passed)
+## 5. Section 5 Mandatory Benchmark Results
 
-To execute the authoritative verification suite, run:
-```bash
-npm run benchmark --prefix server
-```
+The benchmark scenario defined in Section 5 of the NIT Tiruchirappalli problem statement is verified through automated Jest tests (`server/tests/benchmark.test.ts`), CLI script (`server/src/scripts/runBenchmark.ts`), and interactive UI modal.
 
-| Step | Metric | Expected Specification | System Result | Status |
+### Benchmark Results Table (11 Expected Checks)
+
+| # | Benchmark Criterion | Problem Statement Specification | System Result | Status |
 |:---:|---|---|---|:---:|
-| **1** | Flour closing balance | $100 + 60 - 40 = 120\text{ kg}$ | **120 kg** | **PASS** |
-| **2** | Cooking oil closing balance | $30 - 10.5 = 19.5\text{ L}$ | **19.5 L** | **PASS** |
-| **3** | Pouches closing balance | $500 - 188 - 6 = 306\text{ pcs}$ | **306 pcs** | **PASS** |
-| **4** | Finished goods after dispatch | $50 + 188 - 150 = 88\text{ packets}$ | **88 packets** | **PASS** |
-| **5** | Production yield variance | $188\text{ vs }200\text{ expected} = -6.00\%$ | **-6.00% (Flagged Red)** | **PASS** |
-| **6** | Oil consumption variance | $10.5\text{ vs }10.0\text{ L} = +5.00\%$ | **+5.00% (Flagged Red)** | **PASS** |
-| **7** | Retailer A GST Invoice | ₹7,500.00 + ₹187.50 CGST + ₹187.50 SGST | **₹7,875.00 Total** | **PASS** |
-| **8** | Retailer A outstanding balance | $₹7,875.00 - ₹4,000.00 = ₹3,875.00$ | **₹3,875.00** | **PASS** |
-| **9** | Distributor B order shortage | Shortage of 32 packets flagged ($88 < 120$) | **32 pkts Shortage Flagged** | **PASS** |
+| **1** | Flour closing balance | $100\text{ (opening)} + 60\text{ (purchase)} - 40\text{ (used)} = 120\text{ kg}$ | **120 kg** | **PASS** |
+| **2** | Cooking oil closing balance | $30\text{ (opening)} - 10.5\text{ (used)} = 19.5\text{ L}$ | **19.5 L** | **PASS** |
+| **3** | Pouches closing balance | $500\text{ (opening)} - 188\text{ (packed)} - 6\text{ (damaged)} = 306\text{ pcs}$ | **306 pcs** | **PASS** |
+| **4** | Cartons closing balance | $30\text{ (opening)} - 9\text{ (used)} = 21\text{ cartons}$ | **21 cartons** | **PASS** |
+| **5** | Finished goods inventory | 238 packets ($50 + 188$) before dispatch $\rightarrow$ 88 packets ($238 - 150$) after Retailer A dispatch | **238 pkts then 88 pkts** | **PASS** |
+| **6** | Production yield variance | $188\text{ actual vs }200\text{ expected} = -6.00\%$ | **-6.00% (Flagged Red)** | **PASS** |
+| **7** | Oil consumption variance | $10.5\text{ L actual vs }10.0\text{ L standard} = +5.00\%$ | **+5.00% (Flagged Red)** | **PASS** |
+| **8** | Retailer A GST Invoice | ₹7,500.00 taxable + ₹187.50 CGST (2.5%) + ₹187.50 SGST (2.5%) | **₹7,875.00 Total** | **PASS** |
+| **9** | Retailer A outstanding balance | $₹7,875.00\text{ invoice} - ₹4,000.00\text{ payment} = ₹3,875.00$ | **₹3,875.00** | **PASS** |
+| **10** | Distributor B order shortage | Shortage of 32 packets flagged ($88 < 120$ requested; 5% IGST if invoiced) | **32 pkts Shortage Flagged** | **PASS** |
+| **11** | Murukku 200g cost per packet | Direct Materials ₹4,055 + Labour ₹1,200 + Power/Gas ₹600 = ₹5,855 ÷ 188 pkts | **₹31.14 / packet** | **PASS** |
 
-### Section 5.8 Cost Per Packet Mathematical Breakdown
+### Cost-Per-Packet Mathematical Breakdown
 
 $$\text{Total Production Cost} = \text{Direct Materials} + \text{Direct Labour} + \text{Factory Overhead}$$
 
-- **Flour:** $40\text{ kg} \times ₹43.125\text{ (WAC)} = ₹1,725.00$
+- **Flour:** $40\text{ kg} \times ₹43.125\text{ (WAC rate)} = ₹1,725.00$
 - **Cooking Oil:** $10.5\text{ L} \times ₹140.00/\text{L} = ₹1,470.00$
 - **Spice Mix:** $1.2\text{ kg} \times ₹200.00/\text{kg} = ₹240.00$
 - **Pouches:** $(188\text{ good} + 6\text{ damaged}) \times ₹2.50 = ₹485.00$
 - **Cartons:** $9\text{ cartons} \times ₹15.00 = ₹135.00$
 - **Direct Material Cost:** **₹4,055.00**
-- **Direct Labour:** ₹1,200.00
-- **Power & Gas Overhead:** ₹600.00
+- **Direct Labour Cost:** **₹1,200.00**
+- **Power & Gas Overhead:** **₹600.00**
 - **Total Batch Cost:** **₹5,855.00**
+- **Actual Good Packets:** **188 packets**
 - **Unit Cost per Packet:** $\frac{₹5,855.00}{188\text{ packets}} = \mathbf{₹31.1436} \approx \mathbf{₹31.14}$
+
+**Valuation Method (WAC):** All raw material consumption is valued using the Weighted Average Cost (WAC) recalculated on every inward receipt.  
+**Overhead Allocation Rule:** Direct material, direct labour, and factory overheads are allocated uniformly across actual good finished packets ($\text{Unit Cost} = \frac{\text{Direct Material} + \text{Direct Labour} + \text{Direct Overhead}}{\text{Good Output Packets}}$). Scrap and damaged packaging costs are absorbed directly into the batch cost.
 
 ---
 
 ## 6. Core Mathematical & Accounting Invariants
 
 ### 1. Integer Paise Monetary Engine
-To eradicate IEEE-754 floating-point drift, all database models store financial figures as **integer paise** ($1\text{ Rupee} = 100\text{ Paise}$). Line item taxes, grand totals, and payments satisfy:
+To eradicate IEEE-754 floating-point drift, financial figures are **stored as integer paise; rupee values are exposed through Mongoose virtuals** (e.g. `unitPrice`, `taxableValue`, `sellingPrice`, `totalCost` via `{ toJSON: { virtuals: true } }`), matching Known Gap #2. Line item taxes, grand totals, and payments strictly satisfy:
 $$\text{GrandTotalPaise} \equiv \text{TaxablePaise} + \text{CGSTPaise} + \text{SGSTPaise} + \text{IGSTPaise}$$
 $$\text{BalanceDuePaise} \equiv \text{GrandTotalPaise} - \sum \text{PaymentPaise}$$
 
@@ -185,13 +193,32 @@ $$\text{WAC}_{\text{Flour}} = \frac{(100 \times 4,200) + (60 \times 4,500)}{160}
 ### 3. Immutable Stock Ledger Invariant
 No inventory quantity is ever directly edited. Every change is an append-only `StockMovement` row:
 $$\text{CurrentStock}_t = \text{CurrentStock}_0 + \sum_{i=1}^t \Delta Q_i$$
-Outward movements check:
+Outward movements enforce:
 $$\text{AvailableStock} - \text{DispatchQuantity} \ge 0$$
 Any attempt to drive stock negative throws a strict transactional exception.
 
 ---
 
-## 7. Truthful Implementation Matrix & Mock Disclosure
+## 7. Assumptions
+
+1. **GST Rates & Jurisdiction:** GST rate is defined on the Product master (`Product.gstRate = 5%`) under HSN code `19059040` (Murukku snack). The factory is located in Tiruchirappalli, Tamil Nadu (State Code `33`). Intra-state dispatches apply 2.5% CGST + 2.5% SGST; inter-state dispatches apply 5.0% IGST.
+2. **Inventory Valuation Methodology:** Raw and packaging materials are valued strictly using the Weighted Average Cost (WAC) formula upon every inward purchase receipt: $\text{WAC} = \frac{\text{Prior Value} + \text{Inward Value}}{\text{Prior Qty} + \text{Inward Qty}}$.
+3. **Overhead & Cost Allocation:** Batch cost is computed as $\text{Direct Materials} + \text{Direct Labour} + \text{Factory Power/Gas Overheads}$. Unit cost per packet is allocated as $\frac{\text{Total Production Cost}}{\text{Good Output Packets}}$.
+4. **Mock E-Invoice & E-Way Bill:** NIC / GST portal e-invoicing is simulated using an internal mock engine (`isMockEInvoice: true`) that generates deterministic 64-character SHA-256 IRN hashes and standard-compliant QR payload schemas.
+5. **Demonstration Dataset:** Initial master data and ledger balances reflect the NIT Tiruchirappalli Section 5 benchmark baseline scenario for verification and testing.
+
+---
+
+## 8. Known Gaps
+
+1. **Production GSTN / NIC Portal Integration:** The system uses an offline mock generator following NIC Schema v1.1 rather than an active subscription to live government IRP / GSTN servers via ASP/GSP credentials.
+2. **Model Dual Representation (Paise Storage & Virtual Mappings):** Database collections persist monetary amounts in integer `*Paise` fields to avoid floating-point drift, while exposing decimal rupee equivalents via Mongoose virtual getters/setters (`toJSON: { virtuals: true }`) for client compatibility rather than decoupled DTO serializer classes.
+3. **Audit Log Cryptographic Chaining:** Audit trails are append-only at the database collection level (with immutable Mongoose pre-hooks blocking updates and deletions), but do not include a cryptographic SHA-256 hash chain or Merkle tree.
+4. **Commercial SMS / WhatsApp Gateway:** Order dispatch notifications and invoice sharing generate pre-filled WhatsApp Web intents and local event queues rather than integrating a paid commercial BSP API (e.g., Twilio or Meta WhatsApp Business Cloud API).
+
+---
+
+## 9. Truthful Implementation Matrix & Mock Disclosure
 
 To maintain total honesty during interview evaluation:
 
@@ -209,7 +236,7 @@ To maintain total honesty during interview evaluation:
 
 ---
 
-## 8. Commercial UI Architecture & Design System
+## 10. Commercial UI Architecture & Design System
 
 The frontend is built with **React 18 + Vite + Tailwind CSS + Dexie.js (IndexedDB) + Lucide Icons**, crafted as an enterprise SaaS product:
 
@@ -230,23 +257,3 @@ The frontend is built with **React 18 + Vite + Tailwind CSS + Dexie.js (IndexedD
 - **Table Pagination & Empty States:** [`TablePagination.tsx`](client/src/components/TablePagination.tsx) and [`TableEmptyState.tsx`](client/src/components/TableEmptyState.tsx) provide consistent table navigation and helpful empty placeholders across Admin, Inventory, and Auditor desks.
 - **Indian Monetary Formatting (`formatters.ts`):** Centralized helper functions `formatCurrencyRupees` and `formatCurrencyPaise` formatting numbers to standard Indian currency (`₹7,875.00`) and preventing floating-point rounding artifacts.
 - **Persistent Enterprise Footer (`App.tsx`):** Subtle watermark across all pages displaying `ZenLyft Manufacturing OS v1.0.0 • Enterprise Edition` and cluster metadata.
-
----
-
-## 9. Assumptions
-
-1. **GST Rates & Jurisdiction:** GST rate is defined on the Product master (`Product.gstRate = 5%`) under HSN code `19059040` (Murukku snack). The factory is located in Tiruchirappalli, Tamil Nadu (State Code `33`). Intra-state dispatches apply 2.5% CGST + 2.5% SGST; inter-state dispatches apply 5.0% IGST.
-2. **Inventory Valuation Methodology:** Raw and packaging materials are valued strictly using the Weighted Average Cost (WAC) formula upon every inward purchase receipt: $\text{WAC} = \frac{\text{Prior Value} + \text{Inward Value}}{\text{Prior Qty} + \text{Inward Qty}}$.
-3. **Overhead & Cost Allocation:** Batch cost is computed as $\text{Direct Materials} + \text{Direct Labour} + \text{Factory Power/Gas Overheads}$. Unit cost per packet is allocated as $\frac{\text{Total Production Cost}}{\text{Good Output Packets}}$.
-4. **Mock E-Invoice & E-Way Bill:** NIC / GST portal e-invoicing is simulated using an internal mock engine (`isMockEInvoice: true`) that generates deterministic 64-character SHA-256 IRN hashes and standard-compliant QR payload schemas.
-5. **Demonstration Dataset:** Initial master data and ledger balances reflect the NIT Tiruchirappalli Section 5 benchmark baseline scenario for verification and testing.
-
----
-
-## 10. Known Gaps
-
-1. **Production GSTN / NIC Portal Integration:** The system uses an offline mock generator following NIC Schema v1.1 rather than an active subscription to live government IRP / GSTN servers via ASP/GSP credentials.
-2. **Model Dual Representation (Paise Storage & Virtual Mappings):** Database collections persist monetary amounts in integer `*Paise` fields to avoid floating-point drift, while exposing decimal rupee equivalents via Mongoose virtual getters/setters (`toJSON: { virtuals: true }`) for client compatibility rather than decoupled DTO serializer classes.
-3. **Audit Log Cryptographic Chaining:** Audit trails are append-only at the database collection level (with immutable Mongoose pre-hooks blocking updates and deletions), but do not include a cryptographic SHA-256 hash chain or Merkle tree.
-4. **Commercial SMS / WhatsApp Gateway:** Order dispatch notifications and invoice sharing generate pre-filled WhatsApp Web intents and local event queues rather than integrating a paid commercial BSP API (e.g., Twilio or Meta WhatsApp Business Cloud API).
-
