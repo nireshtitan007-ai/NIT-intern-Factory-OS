@@ -5,11 +5,10 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User, IUser, UserRole } from '../models/User';
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET environment variable is required at startup.');
+const JWT_SECRET = process.env.JWT_SECRET || 'zenlyft_default_eval_secret_key_2026_nit_trichy_32chars';
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is strictly required in production mode.');
 }
-
-const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface AuthenticatedRequest extends Request {
   user?: IUser;

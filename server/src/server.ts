@@ -24,7 +24,7 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`================================================================`);
       console.log(` ZenLyft Manufacturing Business OS API running on port ${PORT} `);
-      console.log(` Health check: http://localhost:${PORT}/health                  `);
+      console.log(` Health check: http://localhost:${PORT}/api/health              `);
       console.log(` API Endpoint: http://localhost:${PORT}/api                     `);
       console.log(`================================================================`);
     });
